@@ -2,6 +2,10 @@
 import {
   API_BASE_URL,
 } from "../config";
+import {
+  clearAuthSession,
+  getAuthToken,
+} from "./authStorage";
 
 export class ApiError extends Error {
   status: number;
@@ -23,6 +27,7 @@ interface ApiRequestOptions
 }
 
 export async function apiRequest<T>(
+    
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
@@ -42,6 +47,9 @@ export async function apiRequest<T>(
     timeout
   );
 
+  const token =
+  getAuthToken();
+
   try {
     const response = await fetch(
       `${API_BASE_URL}${path}`,
@@ -50,13 +58,24 @@ export async function apiRequest<T>(
 
         signal: controller.signal,
 
-        headers: {
-          Accept: "application/json",
+       headers: {
+  Accept: "application/json",
 
-          ...headers,
-        },
+  ...(token
+    ? {
+        Authorization:
+          `Bearer ${token}`,
+      }
+    : {}),
+
+  ...headers,
+},
       }
     );
+
+    if (response.status === 401) {
+  clearAuthSession();
+}
 
     if (!response.ok) {
       let message =
