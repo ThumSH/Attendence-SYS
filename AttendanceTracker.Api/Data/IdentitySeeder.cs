@@ -1,5 +1,6 @@
 using AttendanceTracker.Api.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 
 namespace AttendanceTracker.Api.Data;
 
@@ -17,12 +18,45 @@ public static class IdentitySeeder
                     UserManager<ApplicationUser>
                 >();
 
-        const string userName =
-            "admin";
+        var configuration =
+            scope.ServiceProvider
+                .GetRequiredService<
+                    IConfiguration
+                >();
+
+        var userName =
+            configuration[
+                "BootstrapUser:UserName"
+            ];
+
+        var password =
+            configuration[
+                "BootstrapUser:Password"
+            ];
+
+        var fullName =
+            configuration[
+                "BootstrapUser:FullName"
+            ];
+
+        if (
+            string.IsNullOrWhiteSpace(
+                userName
+            )
+            ||
+            string.IsNullOrWhiteSpace(
+                password
+            )
+        )
+        {
+            return;
+        }
 
         var existingUser =
             await userManager
-                .FindByNameAsync(userName);
+                .FindByNameAsync(
+                    userName
+                );
 
         if (existingUser is not null)
         {
@@ -32,19 +66,25 @@ public static class IdentitySeeder
         var user =
             new ApplicationUser
             {
-                UserName = userName,
-                FullName = "System Administrator",
-                IsActive = true
-            };
+                UserName =
+                    userName.Trim(),
 
-        const string initialPassword =
-            "Admin1234";
+                FullName =
+                    string.IsNullOrWhiteSpace(
+                        fullName
+                    )
+                        ? "System Administrator"
+                        : fullName.Trim(),
+
+                IsActive =
+                    true
+            };
 
         var result =
             await userManager
                 .CreateAsync(
                     user,
-                    initialPassword
+                    password
                 );
 
         if (!result.Succeeded)
@@ -59,7 +99,7 @@ public static class IdentitySeeder
                 );
 
             throw new InvalidOperationException(
-                $"Failed to create initial user: {errors}"
+                $"Failed to create bootstrap user: {errors}"
             );
         }
     }
