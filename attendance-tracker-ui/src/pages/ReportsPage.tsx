@@ -22,6 +22,8 @@ import type {
   ReportType,
 } from "../types/reports";
 
+import CompanyBrand from "../components/CompanyBrand";
+
 interface ReportTypeOption {
   value: ReportType;
   label: string;
@@ -1625,54 +1627,64 @@ function ReportPrintHeader({
 }) {
   return (
     <section className="reports-v2-print-header">
-      <div>
-        <h1>
-          COLOUR PLUS PRINTING SYSTEMS
-        </h1>
+      <div className="reports-v2-print-brand-row">
+        <CompanyBrand
+          variant="print"
+        />
 
-        <h2>
-          {reportTitle}
-        </h2>
+        <div className="reports-v2-print-title">
+          <span>
+            Attendance Report
+          </span>
+
+          <h1>
+            {reportTitle}
+          </h1>
+        </div>
       </div>
 
       <div className="reports-v2-print-info">
-        <p>
+        <div>
+          <span>
+            Date From
+          </span>
+
           <strong>
-            Date From:
-          </strong>{" "}
-          {report.dateFrom}
-        </p>
+            {report.dateFrom}
+          </strong>
+        </div>
 
-        <p>
+        <div>
+          <span>
+            Date To
+          </span>
+
           <strong>
-            Date To:
-          </strong>{" "}
-          {report.dateTo}
-        </p>
+            {report.dateTo}
+          </strong>
+        </div>
 
-        {departmentName && (
-          <p>
-            <strong>
-              Department:
-            </strong>{" "}
-            {departmentName}
-          </p>
-        )}
+        <div>
+          <span>
+            Department
+          </span>
 
-        {employee && (
-          <p>
-            <strong>
-              Employee:
-            </strong>{" "}
-            {
-              employee.empNo
-            }
-            {" "}
-            {
-              employee.name
-            }
-          </p>
-        )}
+          <strong>
+            {departmentName || "All Departments"}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Employee
+          </span>
+
+          <strong>
+            {employee
+              ? `${employee.empNo} · ${employee.name}`
+              : "All Employees"}
+          </strong>
+        </div>
       </div>
     </section>
   );

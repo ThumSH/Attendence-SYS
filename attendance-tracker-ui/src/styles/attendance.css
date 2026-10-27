@@ -820,11 +820,156 @@
     padding: 0;
   }
 
+.attendance-v2-print-header {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body {
+    min-width: auto;
+    background: #ffffff;
+  }
+
+  .sidebar,
+  .attendance-v2-header,
+  .attendance-v2-filter-panel,
+  .attendance-v2-employee-overview,
+  .attendance-v2-summary-grid {
+    display: none !important;
+  }
+
+  .main-content.attendance-v2 {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
   .attendance-v2-print-header {
     display: block;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     color: #000000;
   }
+
+  .attendance-v2-print-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 9px;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #111111;
+  }
+
+  .attendance-v2-print-title {
+    text-align: right;
+  }
+
+  .attendance-v2-print-title span {
+    display: block;
+    margin-bottom: 2px;
+    color: #555555;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .attendance-v2-print-title h1 {
+    margin: 0;
+    color: #000000;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .attendance-v2-print-info {
+    display: grid;
+    grid-template-columns:
+      1.4fr
+      1fr
+      0.75fr
+      0.75fr;
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+
+  .attendance-v2-print-info > div {
+    padding: 6px 7px;
+    border: 1px solid #d0d0d0;
+  }
+
+  .attendance-v2-print-info span {
+    display: block;
+    margin-bottom: 2px;
+    color: #555555;
+    font-size: 6.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .attendance-v2-print-info strong {
+    display: block;
+    color: #000000;
+    font-size: 8px;
+    font-weight: 700;
+  }
+
+  .attendance-v2-report-panel {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .attendance-v2-report-heading {
+    display: none;
+  }
+
+  .attendance-v2-table-wrapper {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .attendance-v2-table {
+    min-width: 0;
+    font-size: 8px;
+  }
+
+  .attendance-v2-table thead {
+    position: static;
+    display: table-header-group;
+  }
+
+  .attendance-v2-table th,
+  .attendance-v2-table td {
+    padding: 4px;
+    border: 1px solid #444444;
+    color: #000000 !important;
+    background: #ffffff !important;
+    font-size: 7.5px;
+  }
+
+  .attendance-v2-table tbody tr {
+    break-inside: avoid;
+  }
+
+  .attendance-v2-status,
+  .attendance-v2-metric,
+  .attendance-v2-missing,
+  .attendance-v2-absent-time {
+    padding: 0;
+    background: transparent !important;
+    color: #000000 !important;
+    font-weight: 400;
+  }
+
+  .attendance-v2-status i {
+    display: none;
+  }
+}
 
   .attendance-v2-print-header > div:first-child {
     display: flex;

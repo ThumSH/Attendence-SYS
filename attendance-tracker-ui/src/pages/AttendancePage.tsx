@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import EmployeePicker from "../components/EmployeePicker";
+import CompanyBrand from "../components/CompanyBrand";
 
 import {
   getAttendance,
@@ -1155,47 +1156,64 @@ function PrintHeader({
 }) {
   return (
     <section className="attendance-v2-print-header">
-      <div>
-        <h1>
-          COLOUR PLUS PRINTING SYSTEMS
-        </h1>
+      <div className="attendance-v2-print-brand-row">
+        <CompanyBrand
+          variant="print"
+        />
 
-        <h2>
-          Individual Attendance Summary
-        </h2>
+        <div className="attendance-v2-print-title">
+          <span>
+            Attendance Report
+          </span>
+
+          <h1>
+            Individual Attendance Summary
+          </h1>
+        </div>
       </div>
 
       <div className="attendance-v2-print-info">
-        <p>
-          <strong>
-            Date From:
-          </strong>{" "}
-          {report.employee.dateFrom}
-        </p>
+        <div>
+          <span>
+            Employee
+          </span>
 
-        <p>
           <strong>
-            Date To:
-          </strong>{" "}
-          {report.employee.dateTo}
-        </p>
+            {report.employee.empNo}
+            {" · "}
+            {report.employee.name}
+          </strong>
+        </div>
 
-        <p>
-          <strong>
-            Employee:
-          </strong>{" "}
-          {report.employee.empNo}
-          {"  "}
-          {report.employee.name}
-        </p>
+        <div>
+          <span>
+            Department
+          </span>
 
-        <p>
           <strong>
-            Department:
-          </strong>{" "}
-          {report.employee.department ||
-            "-"}
-        </p>
+            {report.employee.department || "-"}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Date From
+          </span>
+
+          <strong>
+            {report.employee.dateFrom}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Date To
+          </span>
+
+          <strong>
+            {report.employee.dateTo}
+          </strong>
+        </div>
       </div>
     </section>
   );

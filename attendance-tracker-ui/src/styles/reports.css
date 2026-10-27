@@ -8,12 +8,161 @@
   padding-bottom: 40px;
 }
 
-.reports-v2-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 18px;
+.reports-v2-print-header {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    min-width: auto;
+    background: #ffffff;
+  }
+
+  .sidebar,
+  .reports-v2-header,
+  .reports-v2-type-grid,
+  .reports-v2-filter-panel,
+  .reports-v2-summary-grid {
+    display: none !important;
+  }
+
+  .main-content.reports-v2 {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .reports-v2-print-header {
+    display: block;
+    margin-bottom: 12px;
+    color: #000000;
+  }
+
+  .reports-v2-print-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 8px;
+    margin-bottom: 9px;
+    border-bottom: 2px solid #111111;
+  }
+
+  .reports-v2-print-title {
+    text-align: right;
+  }
+
+  .reports-v2-print-title span {
+    display: block;
+    margin-bottom: 2px;
+    color: #555555;
+    font-size: 6.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .reports-v2-print-title h1 {
+    margin: 0;
+    color: #000000;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .reports-v2-print-info {
+    display: grid;
+    grid-template-columns:
+      0.7fr
+      0.7fr
+      1fr
+      1.4fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .reports-v2-print-info > div {
+    padding: 5px 6px;
+    border: 1px solid #d0d0d0;
+  }
+
+  .reports-v2-print-info span {
+    display: block;
+    margin-bottom: 2px;
+    color: #555555;
+    font-size: 6px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .reports-v2-print-info strong {
+    display: block;
+    color: #000000;
+    font-size: 7.5px;
+    font-weight: 700;
+  }
+
+  .reports-v2-result-panel {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .reports-v2-result-heading {
+    display: none;
+  }
+
+  .reports-v2-table-wrapper {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .reports-v2-table,
+  .reports-v2-detail-table,
+  .reports-v2-monthly-table {
+    min-width: 0;
+  }
+
+  .reports-v2-table thead {
+    position: static;
+    display: table-header-group;
+  }
+
+  .reports-v2-table th,
+  .reports-v2-table td {
+    padding: 3px;
+    border: 1px solid #444444;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 6.8px;
+  }
+
+  .reports-v2-table tbody tr {
+    break-inside: avoid;
+  }
+
+  .reports-v2-avatar {
+    display: none;
+  }
+
+  .reports-v2-status,
+  .reports-v2-number,
+  .reports-v2-metric,
+  .reports-v2-missing-time,
+  .reports-v2-absent-time {
+    padding: 0;
+    background: transparent !important;
+    color: #000000 !important;
+    font-weight: 400;
+  }
+
+  .reports-v2-status i {
+    display: none;
+  }
 }
 
 .reports-v2-header > div {

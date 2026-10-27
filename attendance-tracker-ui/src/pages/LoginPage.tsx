@@ -7,6 +7,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import CompanyBrand from "../components/CompanyBrand";
+
 import {
   login,
 } from "../services/auth";
@@ -59,8 +61,7 @@ function LoginPage() {
     event.preventDefault();
 
     if (
-      !userName.trim()
-      ||
+      !userName.trim() ||
       !password
     ) {
       setError(
@@ -78,7 +79,6 @@ function LoginPage() {
         await login({
           userName:
             userName.trim(),
-
           password,
         });
 
@@ -107,102 +107,183 @@ function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-card">
-        <div className="login-brand">
-          <div className="login-brand-icon">
-            A
+      <section className="login-shell">
+        <aside className="login-brand-panel">
+          <div className="login-brand-top">
+            <CompanyBrand />
           </div>
 
-          <div>
+          <div className="login-brand-content">
+            <span className="login-brand-kicker">
+              Internal Attendance Platform
+            </span>
+
             <h1>
-              Attendance Tracker
+              Attendance,
+              <br />
+              clearly managed.
             </h1>
 
             <p>
-              Colour Plus Printing Systems
+              A secure internal workspace for
+              reviewing processed attendance,
+              employee records and operational
+              reports.
             </p>
-          </div>
-        </div>
 
-        <div className="login-heading">
-          <h2>
-            Sign in
-          </h2>
+            <div className="login-brand-features">
+              <div>
+                <span>
+                  01
+                </span>
 
-          <p>
-            Enter your account
-            details to continue.
-          </p>
-        </div>
+                <strong>
+                  Processed attendance records
+                </strong>
+              </div>
 
-        <form
-          onSubmit={
-            handleSubmit
-          }
-          className="login-form"
-        >
-          <div className="field">
-            <label>
-              Username
-            </label>
+              <div>
+                <span>
+                  02
+                </span>
 
-            <input
-              type="text"
-              value={
-                userName
-              }
-              onChange={(e) =>
-                setUserName(
-                  e.target.value
-                )
-              }
-              autoComplete="username"
-              disabled={
-                loading
-              }
-            />
-          </div>
+                <strong>
+                  Department and employee reports
+                </strong>
+              </div>
 
-          <div className="field">
-            <label>
-              Password
-            </label>
+              <div>
+                <span>
+                  03
+                </span>
 
-            <input
-              type="password"
-              value={
-                password
-              }
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-              autoComplete="current-password"
-              disabled={
-                loading
-              }
-            />
-          </div>
-
-          {error && (
-            <div className="error-message">
-              {error}
+                <strong>
+                  Secure internal access
+                </strong>
+              </div>
             </div>
-          )}
+          </div>
 
-          <button
-            type="submit"
-            className="primary-button login-button"
-            disabled={
-              loading
-            }
-          >
-            {loading
-              ? "Signing in..."
-              : "Sign in"}
-          </button>
-        </form>
+          <div className="login-brand-footer">
+            Colour Plus Printing Systems
+
+            <span>
+              •
+            </span>
+
+            Attendance Tracker
+          </div>
+        </aside>
+
+        <section className="login-form-panel">
+          <div className="login-form-wrap">
+            <div className="login-mobile-brand">
+              <CompanyBrand />
+            </div>
+
+            <div className="login-heading">
+              <span>
+                Welcome back
+              </span>
+
+              <h2>
+                Sign in to continue
+              </h2>
+
+              <p>
+                Use your Attendance Tracker
+                account credentials.
+              </p>
+            </div>
+
+            <form
+              onSubmit={
+                handleSubmit
+              }
+              className="login-form"
+            >
+              <label className="login-field">
+                <span>
+                  Username
+                </span>
+
+                <div>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(event) =>
+                      setUserName(
+                        event.target.value
+                      )
+                    }
+                    autoComplete="username"
+                    disabled={loading}
+                    placeholder="Enter username"
+                  />
+                </div>
+              </label>
+
+              <label className="login-field">
+                <span>
+                  Password
+                </span>
+
+                <div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) =>
+                      setPassword(
+                        event.target.value
+                      )
+                    }
+                    autoComplete="current-password"
+                    disabled={loading}
+                    placeholder="Enter password"
+                  />
+                </div>
+              </label>
+
+              {error && (
+                <div className="login-error">
+                  <strong>
+                    Sign in failed
+                  </strong>
+
+                  <span>
+                    {error}
+                  </span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="login-submit"
+                disabled={loading}
+              >
+                <span>
+                  {loading
+                    ? "Signing in..."
+                    : "Sign in"}
+                </span>
+
+                {!loading && (
+                  <span aria-hidden="true">
+                    →
+                  </span>
+                )}
+              </button>
+            </form>
+
+            <div className="login-security-note">
+              <span>
+                ●
+              </span>
+
+              Secure internal access
+            </div>
+          </div>
+        </section>
       </section>
     </main>
   );
