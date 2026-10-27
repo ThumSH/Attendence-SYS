@@ -70,11 +70,13 @@
    ========================= */
 
 .main-content {
-  margin-left: 250px;
+  margin-left: 230px;
 
   padding: 38px;
 
-  width: calc(100% - 250px);
+  width: calc(100% - 230px);
+
+  min-width: 0;
 }
 
 .page-header {
