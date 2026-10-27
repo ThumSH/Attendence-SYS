@@ -20,14 +20,16 @@ import type {
 } from "../types/attendance";
 
 function EmployeesPage() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
+
   const [searchParams] =
     useSearchParams();
 
   const departmentFromUrl =
-    searchParams.get(
-      "department"
-    );
+    searchParams
+      .get("department")
+      ?.trim() ?? "";
 
   const [
     employees,
@@ -52,7 +54,7 @@ function EmployeesPage() {
     setDepartment,
   ] =
     useState(
-      departmentFromUrl ?? ""
+      departmentFromUrl
     );
 
   const [
@@ -69,88 +71,55 @@ function EmployeesPage() {
       null
     );
 
-  /* ================================
-     INITIAL LOAD
-     ================================ */
-
   useEffect(() => {
     let cancelled = false;
 
-    async function loadData() {
-      setLoading(true);
-      setError(null);
-
+    async function loadDepartments() {
       try {
-        const departmentData =
+        const data =
           await getDepartments();
-
-        const employeeData =
-          await getEmployees(
-            undefined,
-            departmentFromUrl ||
-              undefined
-          );
 
         if (cancelled) {
           return;
         }
 
-        setDepartments(
-          departmentData
-        );
-
-        setEmployees(
-          employeeData
-        );
+        setDepartments(data);
 
         if (
-          departmentFromUrl
-        ) {
-          const exists =
-            departmentData.some(
-              (item) =>
-                item.code ===
-                departmentFromUrl
-            );
-
-          if (exists) {
-            setDepartment(
+          departmentFromUrl &&
+          !data.some(
+            (item) =>
+              item.code ===
               departmentFromUrl
-            );
-          }
+          )
+        ) {
+          setDepartment("");
         }
       } catch (err) {
         console.error(err);
 
         if (!cancelled) {
           setError(
-            "Unable to load employee information."
+            "Unable to load departments."
           );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
         }
       }
     }
 
-    loadData();
+    void loadDepartments();
 
     return () => {
       cancelled = true;
     };
-  }, [
-    departmentFromUrl,
-  ]);
-
-  /* ================================
-     DEPARTMENT FILTER
-     ================================ */
+  }, [departmentFromUrl]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadEmployees() {
+      setLoading(true);
+      setError(null);
+
       try {
         const data =
           await getEmployees(
@@ -167,22 +136,22 @@ function EmployeesPage() {
 
         if (!cancelled) {
           setError(
-            "Unable to load employees."
+            "Unable to load employee information."
           );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
     }
 
-    loadEmployees();
+    void loadEmployees();
 
     return () => {
       cancelled = true;
     };
   }, [department]);
-
-  /* ================================
-     SEARCH
-     ================================ */
 
   const filteredEmployees =
     useMemo(() => {
@@ -204,6 +173,7 @@ function EmployeesPage() {
               employee.department,
               employee.departmentCode,
               employee.shift,
+              employee.status,
             ]
               .filter(Boolean)
               .join(" ")
@@ -219,39 +189,59 @@ function EmployeesPage() {
       search,
     ]);
 
-  /* ================================
-     COUNTS
-     ================================ */
-
   const enabledCount =
-    filteredEmployees.filter(
-      (employee) => {
-        const value =
-          employee
-            .attendanceEnabled
-            ?.trim()
-            .toUpperCase();
-
-        return (
-          !value ||
-          value === "Y"
-        );
-      }
-    ).length;
+    useMemo(
+      () =>
+        filteredEmployees.filter(
+          (employee) =>
+            isAttendanceEnabled(
+              employee
+                .attendanceEnabled
+            )
+        ).length,
+      [filteredEmployees]
+    );
 
   const departmentCount =
-    new Set(
-      filteredEmployees
-        .map(
-          (employee) =>
-            employee.departmentCode
-        )
-        .filter(Boolean)
-    ).size;
+    useMemo(
+      () =>
+        new Set(
+          filteredEmployees
+            .map(
+              (employee) =>
+                employee.departmentCode
+            )
+            .filter(Boolean)
+        ).size,
+      [filteredEmployees]
+    );
 
-  /* ================================
-     VIEW ATTENDANCE
-     ================================ */
+  const shiftCount =
+    useMemo(
+      () =>
+        new Set(
+          filteredEmployees
+            .map(
+              (employee) =>
+                employee.shift
+            )
+            .filter(Boolean)
+        ).size,
+      [filteredEmployees]
+    );
+
+  const selectedDepartmentName =
+    useMemo(
+      () =>
+        departments.find(
+          (item) =>
+            item.code === department
+        )?.name ?? null,
+      [
+        departments,
+        department,
+      ]
+    );
 
   function handleViewAttendance(
     employee: Employee
@@ -263,31 +253,22 @@ function EmployeesPage() {
     );
   }
 
-  /* ================================
-     DEPARTMENT CHANGE
-     ================================ */
-
   function handleDepartmentChange(
     value: string
   ) {
     setDepartment(value);
+  }
 
-    /*
-      We don't force-update the URL here.
-      The page still works normally when
-      HR changes the dropdown manually.
-    */
+  function clearFilters() {
+    setSearch("");
+    setDepartment("");
   }
 
   return (
-    <main className="main-content">
-      {/* ============================
-          HEADER
-          ============================ */}
-
-      <header className="page-header employees-page-header">
+    <main className="main-content employees-v2">
+      <header className="employees-v2-header">
         <div>
-          <span className="eyebrow">
+          <span className="employees-v2-eyebrow">
             Attendance Management
           </span>
 
@@ -296,88 +277,136 @@ function EmployeesPage() {
           </h1>
 
           <p>
-            Browse employee records
-            and open individual
-            attendance history.
+            Browse employee records,
+            filter by department and open
+            individual attendance history.
           </p>
+        </div>
+
+        <div className="employees-v2-header-meta">
+          <span>
+            Directory
+          </span>
+
+          <strong>
+            {employees.length}
+          </strong>
+
+          <small>
+            employees loaded
+          </small>
         </div>
       </header>
 
-      {/* ============================
-          SUMMARY
-          ============================ */}
-
-      <section className="employees-summary-grid">
+      <section className="employees-v2-summary-grid">
         <EmployeeSummaryCard
           label="Employees"
           value={
             filteredEmployees.length
           }
           caption="Matching current filters"
+          icon="👥"
+          type="employees"
         />
 
         <EmployeeSummaryCard
           label="Attendance Enabled"
-          value={
-            enabledCount
-          }
-          caption="Employees tracked for attendance"
-          type="active"
+          value={enabledCount}
+          caption="Tracked for attendance"
+          icon="✓"
+          type="enabled"
         />
 
         <EmployeeSummaryCard
           label="Departments"
-          value={
-            departmentCount
-          }
-          caption="Departments in current list"
-          type="department"
+          value={departmentCount}
+          caption="In the current result"
+          icon="▤"
+          type="departments"
+        />
+
+        <EmployeeSummaryCard
+          label="Shifts"
+          value={shiftCount}
+          caption="Assigned shift groups"
+          icon="◷"
+          type="shifts"
         />
       </section>
 
-      {/* ============================
-          FILTER BAR
-          ============================ */}
+      <section className="employees-v2-filter-panel">
+        <div className="employees-v2-filter-heading">
+          <div>
+            <span>
+              Directory Filters
+            </span>
 
-      <section className="employees-filter-card">
-        <div className="employees-filter-grid">
-          <div className="field employees-search-field">
-            <label>
+            <strong>
+              Find employees quickly
+            </strong>
+          </div>
+
+          <button
+            type="button"
+            className="employees-v2-clear-button"
+            onClick={
+              clearFilters
+            }
+            disabled={
+              !search &&
+              !department
+            }
+          >
+            Clear Filters
+          </button>
+        </div>
+
+        <div className="employees-v2-filter-grid">
+          <label className="employees-v2-search">
+            <span>
               Search Employee
-            </label>
+            </span>
 
-            <div className="employees-search-box">
-              <span>
+            <div>
+              <i>
                 ⌕
-              </span>
+              </i>
 
               <input
-                type="text"
-                placeholder="Search employee number, name or department..."
-                value={
-                  search
-                }
-                onChange={(e) =>
+                type="search"
+                placeholder="Search employee number, name, department or shift..."
+                value={search}
+                onChange={(event) =>
                   setSearch(
-                    e.target.value
+                    event.target.value
                   )
                 }
               />
-            </div>
-          </div>
 
-          <div className="field">
-            <label>
+              {search && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSearch("")
+                  }
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </label>
+
+          <label className="employees-v2-department-filter">
+            <span>
               Department
-            </label>
+            </span>
 
             <select
-              value={
-                department
-              }
-              onChange={(e) =>
+              value={department}
+              onChange={(event) =>
                 handleDepartmentChange(
-                  e.target.value
+                  event.target.value
                 )
               }
             >
@@ -388,23 +417,17 @@ function EmployeesPage() {
               {departments.map(
                 (item) => (
                   <option
-                    key={
-                      item.code
-                    }
-                    value={
-                      item.code
-                    }
+                    key={item.code}
+                    value={item.code}
                   >
-                    {
-                      item.name
-                    }
+                    {item.name}
                   </option>
                 )
               )}
             </select>
-          </div>
+          </label>
 
-          <div className="employees-filter-result">
+          <div className="employees-v2-filter-result">
             <span>
               Showing
             </span>
@@ -415,253 +438,313 @@ function EmployeesPage() {
               }
             </strong>
 
-            <span>
-              employees
-            </span>
+            <small>
+              {selectedDepartmentName
+                ? `in ${selectedDepartmentName}`
+                : "employees"}
+            </small>
           </div>
         </div>
       </section>
 
-      {/* ============================
-          ERROR
-          ============================ */}
-
       {error && (
-        <div className="error-message">
-          {error}
+        <div className="employees-v2-error">
+          <strong>
+            Unable to load employees
+          </strong>
+
+          <span>
+            {error}
+          </span>
         </div>
       )}
 
-      {/* ============================
-          LOADING
-          ============================ */}
-
       {loading ? (
-        <section className="employees-loading">
-          <div className="dashboard-loader" />
+        <section className="employees-v2-loading">
+          <div className="employees-v2-spinner" />
 
           <strong>
-            Loading employees...
+            Loading employees
           </strong>
+
+          <span>
+            Retrieving employee directory
+            information...
+          </span>
         </section>
       ) : (
-        /* ============================
-           TABLE
-           ============================ */
-
-        <section className="employees-table-card">
-          <div className="employees-table-heading">
-            <div>
-              <span className="dashboard-section-label">
-                Employee Directory
-              </span>
-
-              <h2>
-                Employee List
-              </h2>
-
-              <p>
-                Employee information
-                from the attendance
-                database.
-              </p>
-            </div>
-
-            <span className="dashboard-record-count">
-              {
-                filteredEmployees.length
-              }{" "}
-              employees
-            </span>
-          </div>
-
-          <div className="table-wrapper employees-table-wrapper">
-            <table className="attendance-table employees-table">
-              <thead>
-                <tr>
-                  <th>
-                    Employee
-                  </th>
-
-                  <th>
-                    Employee No.
-                  </th>
-
-                  <th>
-                    Department
-                  </th>
-
-                  <th>
-                    Shift
-                  </th>
-
-                  <th>
-                    Attendance
-                  </th>
-
-                  <th>
-                    Status
-                  </th>
-
-                  <th>
-                    Action
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredEmployees.length ===
-                0 ? (
-                  <tr>
-                    <td
-                      colSpan={
-                        7
-                      }
-                      className="empty-row"
-                    >
-                      No employees
-                      found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredEmployees.map(
-                    (
-                      employee
-                    ) => (
-                      <tr
-                        key={
-                          employee.empNo
-                        }
-                      >
-                        <td>
-                          <div className="employees-name-cell">
-                            <div className="employee-avatar-small">
-                              {getInitials(
-                                employee.name
-                              )}
-                            </div>
-
-                            <div>
-                              <strong>
-                                {
-                                  employee.name
-                                }
-                              </strong>
-
-                              <span>
-                                {employee.department ||
-                                  "No department"}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td>
-                          <span className="employee-number-badge">
-                            {
-                              employee.empNo
-                            }
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="employees-department-cell">
-                            <strong>
-                              {employee.department ||
-                                "—"}
-                            </strong>
-
-                            <span>
-                              {employee.departmentCode
-                                ? `Code ${employee.departmentCode}`
-                                : ""}
-                            </span>
-                          </div>
-                        </td>
-
-                        <td>
-                          {employee.shift ? (
-                            <span className="employee-shift-badge">
-                              Shift{" "}
-                              {
-                                employee.shift
-                              }
-                            </span>
-                          ) : (
-                            <span className="metric-empty">
-                              —
-                            </span>
-                          )}
-                        </td>
-
-                        <td>
-                          <AttendanceEnabledBadge
-                            value={
-                              employee.attendanceEnabled
-                            }
-                          />
-                        </td>
-
-                        <td>
-                          <EmployeeStatusBadge
-                            status={
-                              employee.status
-                            }
-                          />
-                        </td>
-
-                        <td>
-                          <button
-                            type="button"
-                            className="employee-view-button"
-                            onClick={() =>
-                              handleViewAttendance(
-                                employee
-                              )
-                            }
-                          >
-                            View Attendance
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <EmployeeDirectory
+          employees={
+            filteredEmployees
+          }
+          onViewAttendance={
+            handleViewAttendance
+          }
+        />
       )}
     </main>
   );
 }
 
-/* =================================
-   SUMMARY CARD
-   ================================= */
+function EmployeeDirectory({
+  employees,
+  onViewAttendance,
+}: {
+  employees: Employee[];
+
+  onViewAttendance:
+    (employee: Employee) =>
+      void;
+}) {
+  return (
+    <section className="employees-v2-table-panel">
+      <div className="employees-v2-table-heading">
+        <div>
+          <span>
+            Employee Directory
+          </span>
+
+          <h2>
+            Employee List
+          </h2>
+
+          <p>
+            Employee information from the
+            attendance database.
+          </p>
+        </div>
+
+        <div className="employees-v2-table-count">
+          <strong>
+            {employees.length}
+          </strong>
+
+          <span>
+            records
+          </span>
+        </div>
+      </div>
+
+      <div className="employees-v2-table-wrapper">
+        <table className="employees-v2-table">
+          <thead>
+            <tr>
+              <th>
+                Employee
+              </th>
+
+              <th>
+                Employee No.
+              </th>
+
+              <th>
+                Department
+              </th>
+
+              <th>
+                Shift
+              </th>
+
+              <th>
+                Attendance
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Action
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {employees.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="employees-v2-empty-cell"
+                >
+                  <div className="employees-v2-empty">
+                    <div>
+                      ⌕
+                    </div>
+
+                    <strong>
+                      No employees found
+                    </strong>
+
+                    <span>
+                      Try changing the search
+                      text or department filter.
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              employees.map(
+                (employee) => (
+                  <EmployeeRow
+                    key={
+                      employee.empNo
+                    }
+                    employee={
+                      employee
+                    }
+                    onViewAttendance={
+                      onViewAttendance
+                    }
+                  />
+                )
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function EmployeeRow({
+  employee,
+  onViewAttendance,
+}: {
+  employee: Employee;
+
+  onViewAttendance:
+    (employee: Employee) =>
+      void;
+}) {
+  return (
+    <tr>
+      <td>
+        <div className="employees-v2-name-cell">
+          <div className="employees-v2-avatar">
+            {getInitials(
+              employee.name
+            )}
+          </div>
+
+          <div>
+            <strong>
+              {employee.name ||
+                "Unknown Employee"}
+            </strong>
+
+            <span>
+              {employee.department ||
+                "No department"}
+            </span>
+          </div>
+        </div>
+      </td>
+
+      <td>
+        <span className="employees-v2-number">
+          {employee.empNo}
+        </span>
+      </td>
+
+      <td>
+        <div className="employees-v2-department-cell">
+          <strong>
+            {employee.department ||
+              "—"}
+          </strong>
+
+          {employee.departmentCode && (
+            <span>
+              Code{" "}
+              {
+                employee.departmentCode
+              }
+            </span>
+          )}
+        </div>
+      </td>
+
+      <td>
+        {employee.shift ? (
+          <span className="employees-v2-shift">
+            Shift{" "}
+            {employee.shift}
+          </span>
+        ) : (
+          <span className="employees-v2-empty-value">
+            —
+          </span>
+        )}
+      </td>
+
+      <td>
+        <AttendanceEnabledBadge
+          value={
+            employee
+              .attendanceEnabled
+          }
+        />
+      </td>
+
+      <td>
+        <EmployeeStatusBadge
+          status={
+            employee.status
+          }
+        />
+      </td>
+
+      <td>
+        <button
+          type="button"
+          className="employees-v2-view-button"
+          onClick={() =>
+            onViewAttendance(
+              employee
+            )
+          }
+        >
+          View Attendance
+          <span>
+            →
+          </span>
+        </button>
+      </td>
+    </tr>
+  );
+}
 
 function EmployeeSummaryCard({
   label,
   value,
   caption,
-  type = "default",
+  icon,
+  type,
 }: {
   label: string;
   value: number;
   caption: string;
+  icon: string;
 
-  type?:
-    | "default"
-    | "active"
-    | "department";
+  type:
+    | "employees"
+    | "enabled"
+    | "departments"
+    | "shifts";
 }) {
   return (
-    <div
-      className={`employee-summary-card employee-summary-${type}`}
+    <article
+      className={`employees-v2-summary-card ${type}`}
     >
-      <span>
-        {label}
-      </span>
+      <div>
+        <span className={`employees-v2-summary-icon ${type}`}>
+          {icon}
+        </span>
+
+        <span className="employees-v2-summary-label">
+          {label}
+        </span>
+      </div>
 
       <strong>
         {value}
@@ -670,39 +753,29 @@ function EmployeeSummaryCard({
       <small>
         {caption}
       </small>
-    </div>
+    </article>
   );
 }
-
-/* =================================
-   ATTENDANCE ENABLED
-   ================================= */
 
 function AttendanceEnabledBadge({
   value,
 }: {
-  value:
-    | string
-    | null;
+  value: string | null;
 }) {
-  const cleanValue =
-    value
-      ?.trim()
-      .toUpperCase();
-
   const enabled =
-    !cleanValue ||
-    cleanValue === "Y";
+    isAttendanceEnabled(
+      value
+    );
 
   return (
     <span
-      className={
+      className={`employees-v2-attendance ${
         enabled
-          ? "employee-attendance-badge enabled"
-          : "employee-attendance-badge disabled"
-      }
+          ? "enabled"
+          : "disabled"
+      }`}
     >
-      <span className="status-dot" />
+      <i />
 
       {enabled
         ? "Enabled"
@@ -711,45 +784,44 @@ function AttendanceEnabledBadge({
   );
 }
 
-/* =================================
-   EMPLOYEE STATUS
-   ================================= */
-
 function EmployeeStatusBadge({
   status,
 }: {
-  status:
-    | string
-    | null;
+  status: string | null;
 }) {
-  if (
-    !status ||
-    status.trim() === ""
-  ) {
+  if (!status?.trim()) {
     return (
-      <span className="employee-status-badge neutral">
+      <span className="employees-v2-status neutral">
         —
       </span>
     );
   }
 
   return (
-    <span className="employee-status-badge">
+    <span className="employees-v2-status">
       {status}
     </span>
   );
 }
 
-/* =================================
-   INITIALS
-   ================================= */
+function isAttendanceEnabled(
+  value: string | null
+) {
+  const normalized =
+    value
+      ?.trim()
+      .toUpperCase();
+
+  return (
+    !normalized ||
+    normalized === "Y"
+  );
+}
 
 function getInitials(
-  name:
-    | string
-    | null
+  name?: string | null
 ) {
-  if (!name) {
+  if (!name?.trim()) {
     return "?";
   }
 
@@ -757,11 +829,10 @@ function getInitials(
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map(
-      (word) =>
-        word
-          .charAt(0)
-          .toUpperCase()
+    .map((word) =>
+      word
+        .charAt(0)
+        .toUpperCase()
     )
     .join("");
 }
