@@ -9,6 +9,7 @@ using AttendanceTracker.Api.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using AttendanceTracker.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -121,6 +122,9 @@ builder.Services.AddDbContext<
             appDbConnection
         )
 );
+
+builder.Services
+    .AddScoped<AttendanceAnnotationService>();
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(
