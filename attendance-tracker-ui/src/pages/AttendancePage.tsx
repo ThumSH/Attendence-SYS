@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
@@ -13,12 +14,23 @@ import EmployeePicker from "../components/EmployeePicker";
 import CompanyBrand from "../components/CompanyBrand";
 
 import {
+  deleteAttendanceAnnotation,
   getAttendance,
+  getAttendanceAnnotations,
   getDepartments,
   getEmployees,
+  saveAttendanceAnnotation,
 } from "../services/api";
 
+import {
+  buildReportFileName,
+  exportToExcel,
+  type ExportColumn,
+} from "../utils/reportExport";
+
 import type {
+  AttendanceAnnotation,
+  AttendanceAnnotationField,
   AttendanceReport,
   AttendanceRow,
   Department,
@@ -28,6 +40,41 @@ import type {
 type QuickRange =
   | "month"
   | "30days";
+
+
+interface AttendanceExportRow {
+  date: string;
+  shiftIn: string;
+  timeIn: string;
+  shiftOut: string;
+  timeOut: string;
+  late: string;
+  early: string;
+  ot: string;
+  status: string;
+}
+
+const ATTENDANCE_EXPORT_COLUMNS: ExportColumn<AttendanceExportRow>[] = [
+  { key: "date", label: "Date" },
+  { key: "shiftIn", label: "Shift In" },
+  { key: "timeIn", label: "Time In" },
+  { key: "shiftOut", label: "Shift Out" },
+  { key: "timeOut", label: "Time Out" },
+  { key: "late", label: "Late" },
+  { key: "early", label: "Early" },
+  { key: "ot", label: "OT" },
+  { key: "status", label: "Status" },
+];
+
+const ABSENCE_REASON_OPTIONS = [
+  "Fever",
+  "Poya Day",
+  "Mercantile Holiday",
+  "Company Leave",
+  "Thai Pongal",
+  "Christmas",
+  "New Year",
+] as const;
 
 function AttendancePage() {
   const [searchParams] =
@@ -89,6 +136,12 @@ function AttendancePage() {
     );
 
   const [
+    annotations,
+    setAnnotations,
+  ] =
+    useState<AttendanceAnnotation[]>([]);
+
+  const [
     loading,
     setLoading,
   ] =
@@ -146,10 +199,7 @@ function AttendancePage() {
 
       try {
         const data =
-          await getEmployees(
-            undefined,
-            department || undefined
-          );
+          await getEmployees();
 
         if (cancelled) {
           return;
@@ -201,7 +251,7 @@ function AttendancePage() {
     return () => {
       cancelled = true;
     };
-  }, [department]);
+  }, []);
 
   useEffect(() => {
     if (
@@ -249,15 +299,28 @@ function AttendancePage() {
       setError(null);
 
       try {
-        const data =
-          await getAttendance(
-            selectedEmployee,
-            from,
-            to
-          );
+        const [
+          data,
+          annotationData,
+        ] =
+          await Promise.all([
+            getAttendance(
+              selectedEmployee,
+              from,
+              to
+            ),
+            getAttendanceAnnotations(
+              selectedEmployee,
+              from,
+              to
+            ),
+          ]);
 
         if (!cancelled) {
           setReport(data);
+          setAnnotations(
+            annotationData
+          );
         }
       } catch (err) {
         console.error(err);
@@ -319,14 +382,27 @@ function AttendancePage() {
     setError(null);
 
     try {
-      const data =
-        await getAttendance(
-          selectedEmployee,
-          from,
-          to
-        );
+      const [
+        data,
+        annotationData,
+      ] =
+        await Promise.all([
+          getAttendance(
+            selectedEmployee,
+            from,
+            to
+          ),
+          getAttendanceAnnotations(
+            selectedEmployee,
+            from,
+            to
+          ),
+        ]);
 
       setReport(data);
+      setAnnotations(
+        annotationData
+      );
 
       if (
         employeeFromUrl &&
@@ -352,6 +428,7 @@ function AttendancePage() {
   ) {
     setDepartment(value);
     setReport(null);
+    setAnnotations([]);
     autoLoadedReport.current = null;
   }
 
@@ -360,6 +437,7 @@ function AttendancePage() {
   ) {
     setSelectedEmployee(empNo);
     setReport(null);
+    setAnnotations([]);
     autoLoadedReport.current = null;
   }
 
@@ -368,6 +446,7 @@ function AttendancePage() {
   ) {
     setFrom(value);
     setReport(null);
+    setAnnotations([]);
     autoLoadedReport.current = null;
   }
 
@@ -376,6 +455,7 @@ function AttendancePage() {
   ) {
     setTo(value);
     setReport(null);
+    setAnnotations([]);
     autoLoadedReport.current = null;
   }
 
@@ -390,6 +470,7 @@ function AttendancePage() {
     setFrom(dates.from);
     setTo(dates.to);
     setReport(null);
+    setAnnotations([]);
     autoLoadedReport.current = null;
   }
 
@@ -402,6 +483,7 @@ function AttendancePage() {
     setFrom(dates.from);
     setTo(dates.to);
     setReport(null);
+    setAnnotations([]);
     setError(null);
     autoLoadedReport.current = null;
   }
@@ -420,8 +502,196 @@ function AttendancePage() {
       ]
     );
 
+  const pickerEmployees =
+    useMemo(() => {
+      if (!department) {
+        return employees;
+      }
+
+      const matching =
+        employees.filter(
+          (employee) =>
+            employee.departmentCode ===
+            department
+        );
+
+      const others =
+        employees.filter(
+          (employee) =>
+            employee.departmentCode !==
+            department
+        );
+
+      return [
+        ...matching,
+        ...others,
+      ];
+    }, [
+      employees,
+      department,
+    ]);
+
+  async function handleSaveAnnotation(
+    attendanceDate: string,
+    fieldName: AttendanceAnnotationField,
+    reason: string
+  ) {
+    if (!report) {
+      return;
+    }
+
+    try {
+      const saved =
+        await saveAttendanceAnnotation({
+          empNo:
+            report.employee.empNo,
+          attendanceDate,
+          fieldName,
+          reason,
+        });
+
+      setAnnotations(
+        (current) => [
+          ...current.filter(
+            (item) =>
+              !(
+                item.attendanceDate ===
+                  saved.attendanceDate &&
+                item.fieldName ===
+                  saved.fieldName
+              )
+          ),
+          saved,
+        ]
+      );
+
+      setError(null);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Unable to save the attendance reason."
+      );
+
+      throw err;
+    }
+  }
+
+  async function handleDeleteAnnotation(
+    annotation: AttendanceAnnotation
+  ) {
+    try {
+      await deleteAttendanceAnnotation(
+        annotation.id
+      );
+
+      setAnnotations(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.id !== annotation.id
+          )
+      );
+
+      setError(null);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Unable to remove the attendance reason."
+      );
+
+      throw err;
+    }
+  }
+
+  function handleExcelExport() {
+    if (!report) {
+      return;
+    }
+
+    const rows: AttendanceExportRow[] =
+      report.attendance.map(
+        (row) => ({
+          date: row.date,
+          shiftIn:
+            getDisplayExportValue(
+              row,
+              "ShiftIn",
+              annotations
+            ),
+          timeIn:
+            getDisplayExportValue(
+              row,
+              "TimeIn",
+              annotations
+            ),
+          shiftOut:
+            getDisplayExportValue(
+              row,
+              "ShiftOut",
+              annotations
+            ),
+          timeOut:
+            getDisplayExportValue(
+              row,
+              "TimeOut",
+              annotations
+            ),
+          late:
+            getDisplayExportValue(
+              row,
+              "Late",
+              annotations
+            ),
+          early:
+            getDisplayExportValue(
+              row,
+              "Early",
+              annotations
+            ),
+          ot:
+            getDisplayExportValue(
+              row,
+              "Ot",
+              annotations
+            ),
+          status: row.status,
+        })
+      );
+
+    exportToExcel<AttendanceExportRow>({
+      rows,
+      columns:
+        ATTENDANCE_EXPORT_COLUMNS,
+      fileName:
+        buildReportFileName(
+          `Individual_Attendance_${report.employee.empNo}`,
+          report.employee.dateFrom,
+          report.employee.dateTo
+        ),
+      sheetName:
+        "Individual Attendance",
+    });
+  }
+
   return (
     <main className="main-content attendance-v2">
+      <style>
+        {`
+          @media print {
+            .attendance-v2-status-column {
+              display: none !important;
+            }
+
+            .attendance-v2-annotation-edit-hint,
+            .attendance-v2-annotation-editor {
+              display: none !important;
+            }
+          }
+        `}
+      </style>
+
       <header className="attendance-v2-header">
         <div>
           <span className="attendance-v2-eyebrow">
@@ -439,20 +709,35 @@ function AttendancePage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="attendance-v2-print-button"
-          onClick={() =>
-            window.print()
-          }
-          disabled={!report}
-        >
-          <span>
-            ⎙
-          </span>
+        <div className="attendance-v2-export-actions">
+          <button
+            type="button"
+            className="attendance-v2-excel-button"
+            onClick={handleExcelExport}
+            disabled={!report}
+          >
+            <span>
+              XLS
+            </span>
 
-          Print Report
-        </button>
+            Export Excel
+          </button>
+
+          <button
+            type="button"
+            className="attendance-v2-print-button"
+            onClick={() =>
+              window.print()
+            }
+            disabled={!report}
+          >
+            <span>
+              ⎙
+            </span>
+
+            Print / PDF
+          </button>
+        </div>
       </header>
 
       <section className="attendance-v2-filter-panel">
@@ -539,7 +824,7 @@ function AttendancePage() {
             </span>
 
             <EmployeePicker
-              employees={employees}
+              employees={pickerEmployees}
               value={
                 selectedEmployee
               }
@@ -548,9 +833,14 @@ function AttendancePage() {
               }
             />
 
-            {loadingEmployees && (
+            {loadingEmployees ? (
               <small>
                 Updating employee list...
+              </small>
+            ) : (
+              <small>
+                Search all employees by name,
+                number or department.
               </small>
             )}
           </div>
@@ -694,7 +984,14 @@ function AttendancePage() {
 
           <AttendanceDetails
             report={report}
+            annotations={annotations}
             refreshing={loading}
+            onSaveAnnotation={
+              handleSaveAnnotation
+            }
+            onDeleteAnnotation={
+              handleDeleteAnnotation
+            }
           />
         </>
       )}
@@ -876,10 +1173,22 @@ function AttendanceStat({
 
 function AttendanceDetails({
   report,
+  annotations,
   refreshing,
+  onSaveAnnotation,
+  onDeleteAnnotation,
 }: {
   report: AttendanceReport;
+  annotations: AttendanceAnnotation[];
   refreshing: boolean;
+  onSaveAnnotation: (
+    attendanceDate: string,
+    fieldName: AttendanceAnnotationField,
+    reason: string
+  ) => Promise<void>;
+  onDeleteAnnotation: (
+    annotation: AttendanceAnnotation
+  ) => Promise<void>;
 }) {
   return (
     <section className="attendance-v2-report-panel">
@@ -915,6 +1224,18 @@ function AttendanceDetails({
             </small>
           )}
         </div>
+      </div>
+
+      <div className="attendance-v2-annotation-note">
+        <strong>
+          Attendance reasons
+        </strong>
+
+        <span>
+          Empty or AB cells can be annotated.
+          These notes are stored in the Attendance
+          Tracker database and do not change SCS.
+        </span>
       </div>
 
       <div className="attendance-v2-table-wrapper">
@@ -953,7 +1274,7 @@ function AttendanceDetails({
                 OT
               </th>
 
-              <th>
+              <th className="attendance-v2-status-column">
                 Status
               </th>
             </tr>
@@ -980,6 +1301,15 @@ function AttendanceDetails({
                   <AttendanceRowView
                     key={`${row.date}-${index}`}
                     row={row}
+                    annotations={
+                      annotations
+                    }
+                    onSaveAnnotation={
+                      onSaveAnnotation
+                    }
+                    onDeleteAnnotation={
+                      onDeleteAnnotation
+                    }
                   />
                 )
               )
@@ -1013,7 +1343,7 @@ function AttendanceDetails({
                   }
                 </td>
 
-                <td>
+                <td className="attendance-v2-status-column">
                   —
                 </td>
               </tr>
@@ -1027,8 +1357,20 @@ function AttendanceDetails({
 
 function AttendanceRowView({
   row,
+  annotations,
+  onSaveAnnotation,
+  onDeleteAnnotation,
 }: {
   row: AttendanceRow;
+  annotations: AttendanceAnnotation[];
+  onSaveAnnotation: (
+    attendanceDate: string,
+    fieldName: AttendanceAnnotationField,
+    reason: string
+  ) => Promise<void>;
+  onDeleteAnnotation: (
+    annotation: AttendanceAnnotation
+  ) => Promise<void>;
 }) {
   return (
     <tr>
@@ -1049,58 +1391,409 @@ function AttendanceRowView({
       </td>
 
       <td>
-        {displayValue(
-          row.shiftIn
-        )}
+        <EditableAttendanceCell
+          row={row}
+          fieldName="ShiftIn"
+          value={row.shiftIn}
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          {displayValue(
+            row.shiftIn
+          )}
+        </EditableAttendanceCell>
       </td>
 
       <td>
-        {renderAttendanceTime(
-          row.timeIn
-        )}
+        <EditableAttendanceCell
+          row={row}
+          fieldName="TimeIn"
+          value={row.timeIn}
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          {renderAttendanceTime(
+            row.timeIn
+          )}
+        </EditableAttendanceCell>
       </td>
 
       <td>
-        {displayValue(
-          row.shiftOut
-        )}
+        <EditableAttendanceCell
+          row={row}
+          fieldName="ShiftOut"
+          value={row.shiftOut}
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          {displayValue(
+            row.shiftOut
+          )}
+        </EditableAttendanceCell>
       </td>
 
       <td>
-        {renderMissingTime(
-          row.timeOut,
-          row.status ===
-            "Missing Check-Out"
-        )}
+        <EditableAttendanceCell
+          row={row}
+          fieldName="TimeOut"
+          value={row.timeOut}
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          {renderMissingTime(
+            row.timeOut,
+            row.status ===
+              "Missing Check-Out"
+          )}
+        </EditableAttendanceCell>
       </td>
 
       <td>
-        <MetricValue
+        <EditableAttendanceCell
+          row={row}
+          fieldName="Late"
           value={row.late}
-          type="late"
-        />
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          <MetricValue
+            value={row.late}
+            type="late"
+          />
+        </EditableAttendanceCell>
       </td>
 
       <td>
-        <MetricValue
+        <EditableAttendanceCell
+          row={row}
+          fieldName="Early"
           value={row.early}
-          type="early"
-        />
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          <MetricValue
+            value={row.early}
+            type="early"
+          />
+        </EditableAttendanceCell>
       </td>
 
       <td>
-        <MetricValue
+        <EditableAttendanceCell
+          row={row}
+          fieldName="Ot"
           value={row.ot}
-          type="ot"
-        />
+          annotations={annotations}
+          onSave={onSaveAnnotation}
+          onDelete={onDeleteAnnotation}
+        >
+          <MetricValue
+            value={row.ot}
+            type="ot"
+          />
+        </EditableAttendanceCell>
       </td>
 
-      <td>
+      <td className="attendance-v2-status-column">
         <StatusBadge
           status={row.status}
         />
       </td>
     </tr>
+  );
+}
+
+function EditableAttendanceCell({
+  row,
+  fieldName,
+  value,
+  annotations,
+  onSave,
+  onDelete,
+  children,
+}: {
+  row: AttendanceRow;
+  fieldName: AttendanceAnnotationField;
+  value: string | null;
+  annotations: AttendanceAnnotation[];
+  onSave: (
+    attendanceDate: string,
+    fieldName: AttendanceAnnotationField,
+    reason: string
+  ) => Promise<void>;
+  onDelete: (
+    annotation: AttendanceAnnotation
+  ) => Promise<void>;
+  children: ReactNode;
+}) {
+  const annotation =
+    findAnnotation(
+      annotations,
+      row.date,
+      fieldName
+    );
+
+  const [
+    editing,
+    setEditing,
+  ] =
+    useState(false);
+
+  const [
+    selectedReason,
+    setSelectedReason,
+  ] =
+    useState("");
+
+  const [
+    customReason,
+    setCustomReason,
+  ] =
+    useState("");
+
+  const [
+    saving,
+    setSaving,
+  ] =
+    useState(false);
+
+  const [
+    localError,
+    setLocalError,
+  ] =
+    useState<string | null>(null);
+
+  const editable =
+    Boolean(annotation) ||
+    isAnnotatableValue(value);
+
+  function openEditor() {
+    const existingReason =
+      annotation?.reason?.trim() ?? "";
+
+    const knownReason =
+      ABSENCE_REASON_OPTIONS.some(
+        (reason) =>
+          reason === existingReason
+      );
+
+    setSelectedReason(
+      knownReason
+        ? existingReason
+        : existingReason
+          ? "Other"
+          : ""
+    );
+
+    setCustomReason(
+      knownReason
+        ? ""
+        : existingReason
+    );
+
+    setLocalError(null);
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    const reason =
+      selectedReason === "Other"
+        ? customReason.trim()
+        : selectedReason.trim();
+
+    if (!reason) {
+      setLocalError(
+        "Select or enter a reason."
+      );
+
+      return;
+    }
+
+    setSaving(true);
+    setLocalError(null);
+
+    try {
+      await onSave(
+        row.date,
+        fieldName,
+        reason
+      );
+
+      setEditing(false);
+    } catch {
+      setLocalError(
+        "Unable to save reason."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!annotation) {
+      return;
+    }
+
+    setSaving(true);
+    setLocalError(null);
+
+    try {
+      await onDelete(annotation);
+
+      setEditing(false);
+    } catch {
+      setLocalError(
+        "Unable to remove reason."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editable) {
+    return (
+      <>
+        {children}
+      </>
+    );
+  }
+
+  return (
+    <div className="attendance-v2-editable-cell">
+      <button
+        type="button"
+        className={
+          annotation
+            ? "attendance-v2-annotation-value"
+            : "attendance-v2-annotation-trigger"
+        }
+        onClick={openEditor}
+        title={
+          annotation
+            ? "Edit attendance reason"
+            : "Add attendance reason"
+        }
+      >
+        {annotation ? (
+          <strong>
+            {annotation.reason}
+          </strong>
+        ) : (
+          <>
+            <span>
+              {children}
+            </span>
+
+            <small className="attendance-v2-annotation-edit-hint">
+              Add reason
+            </small>
+          </>
+        )}
+      </button>
+
+      {editing && (
+        <div className="attendance-v2-annotation-editor">
+          <strong>
+            Attendance reason
+          </strong>
+
+          <select
+            value={selectedReason}
+            onChange={(event) =>
+              setSelectedReason(
+                event.target.value
+              )
+            }
+            disabled={saving}
+          >
+            <option value="">
+              Select reason
+            </option>
+
+            {ABSENCE_REASON_OPTIONS.map(
+              (reason) => (
+                <option
+                  key={reason}
+                  value={reason}
+                >
+                  {reason}
+                </option>
+              )
+            )}
+
+            <option value="Other">
+              Other / Custom
+            </option>
+          </select>
+
+          {selectedReason ===
+            "Other" && (
+            <input
+              type="text"
+              value={customReason}
+              placeholder="Enter custom reason"
+              maxLength={200}
+              disabled={saving}
+              onChange={(event) =>
+                setCustomReason(
+                  event.target.value
+                )
+              }
+            />
+          )}
+
+          {localError && (
+            <small className="attendance-v2-annotation-error">
+              {localError}
+            </small>
+          )}
+
+          <div className="attendance-v2-annotation-actions">
+            <button
+              type="button"
+              onClick={() =>
+                void handleSave()
+              }
+              disabled={saving}
+            >
+              {saving
+                ? "Saving..."
+                : "Save"}
+            </button>
+
+            {annotation && (
+              <button
+                type="button"
+                className="danger"
+                onClick={() =>
+                  void handleDelete()
+                }
+                disabled={saving}
+              >
+                Remove
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="secondary"
+              onClick={() =>
+                setEditing(false)
+              }
+              disabled={saving}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1383,6 +2076,87 @@ function parseLocalDate(
 ) {
   return new Date(
     `${value}T00:00:00`
+  );
+}
+
+function findAnnotation(
+  annotations: AttendanceAnnotation[],
+  attendanceDate: string,
+  fieldName: AttendanceAnnotationField
+) {
+  return (
+    annotations.find(
+      (annotation) =>
+        annotation.attendanceDate ===
+          attendanceDate &&
+        annotation.fieldName ===
+          fieldName
+    ) ?? null
+  );
+}
+
+function isAnnotatableValue(
+  value: string | null
+) {
+  if (!value?.trim()) {
+    return true;
+  }
+
+  return (
+    value.trim().toLowerCase() ===
+    "ab"
+  );
+}
+
+function getRowFieldValue(
+  row: AttendanceRow,
+  fieldName: AttendanceAnnotationField
+) {
+  switch (fieldName) {
+    case "ShiftIn":
+      return row.shiftIn;
+
+    case "TimeIn":
+      return row.timeIn;
+
+    case "ShiftOut":
+      return row.shiftOut;
+
+    case "TimeOut":
+      return row.timeOut;
+
+    case "Late":
+      return row.late;
+
+    case "Early":
+      return row.early;
+
+    case "Ot":
+      return row.ot;
+  }
+}
+
+function getDisplayExportValue(
+  row: AttendanceRow,
+  fieldName: AttendanceAnnotationField,
+  annotations: AttendanceAnnotation[]
+) {
+  const annotation =
+    findAnnotation(
+      annotations,
+      row.date,
+      fieldName
+    );
+
+  if (annotation) {
+    return annotation.reason;
+  }
+
+  return (
+    getRowFieldValue(
+      row,
+      fieldName
+    )?.trim() ?? ""
   );
 }
 

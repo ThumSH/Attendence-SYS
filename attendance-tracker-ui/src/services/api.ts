@@ -3,9 +3,11 @@ import {
 } from "./apiClient";
 
 import type {
+  AttendanceAnnotation,
   AttendanceReport,
   Department,
   Employee,
+  SaveAttendanceAnnotationRequest,
 } from "../types/attendance";
 
 import type {
@@ -99,6 +101,7 @@ export async function getEmployees(
    ========================================== */
 
 export async function getAttendance(
+
   empNo: string,
   from: string,
   to: string
@@ -113,6 +116,51 @@ export async function getAttendance(
     `/api/attendance/${encodeURIComponent(
       empNo
     )}?${params.toString()}`
+  );
+}
+
+export async function getAttendanceAnnotations(
+  empNo: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<AttendanceAnnotation[]> {
+  const params =
+    new URLSearchParams({
+      empNo,
+      dateFrom,
+      dateTo,
+    });
+
+  return apiRequest<AttendanceAnnotation[]>(
+    `/api/attendance-annotations?${params.toString()}`
+  );
+}
+
+export async function saveAttendanceAnnotation(
+  request: SaveAttendanceAnnotationRequest
+): Promise<AttendanceAnnotation> {
+  return apiRequest<AttendanceAnnotation>(
+    "/api/attendance-annotations",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify(request),
+    }
+  );
+}
+
+export async function deleteAttendanceAnnotation(
+  id: number
+): Promise<void> {
+  await apiRequest<void>(
+    `/api/attendance-annotations/${id}`,
+    {
+      method: "DELETE",
+    }
   );
 }
 

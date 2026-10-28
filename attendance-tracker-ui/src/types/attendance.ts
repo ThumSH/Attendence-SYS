@@ -59,3 +59,42 @@ export interface AttendanceReport {
     totalOT: string;
   };
 }
+
+/* ==========================================
+   ATTENDANCE ANNOTATIONS
+   ========================================== */
+
+export type AttendanceAnnotationField =
+  | "TimeIn"
+  | "TimeOut"
+  | "ShiftIn"
+  | "ShiftOut"
+  | "Late"
+  | "Early"
+  | "Ot";
+
+export interface AttendanceAnnotation {
+  id: number;
+
+  empNo: string;
+
+  attendanceDate: string;
+
+  fieldName: AttendanceAnnotationField;
+
+  reason: string;
+
+  createdAtUtc: string;
+
+  updatedAtUtc: string;
+}
+
+export interface SaveAttendanceAnnotationRequest {
+  empNo: string;
+
+  attendanceDate: string;
+
+  fieldName: AttendanceAnnotationField;
+
+  reason: string;
+}
