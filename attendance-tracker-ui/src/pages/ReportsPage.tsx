@@ -10,6 +10,13 @@ import {
   getReport,
 } from "../services/api";
 
+import {
+  buildReportFileName,
+  exportToCsv,
+  exportToExcel,
+  type ExportColumn,
+} from "../utils/reportExport";
+
 import type {
   Department,
   Employee,
@@ -67,6 +74,96 @@ const REPORT_TYPES: ReportTypeOption[] = [
     label: "Overtime",
     description: "Records containing overtime",
     icon: "+",
+  },
+];
+
+const DETAIL_EXPORT_COLUMNS: ExportColumn<ReportRow>[] = [
+  {
+    key: "empNo",
+    label: "Employee No",
+  },
+  {
+    key: "name",
+    label: "Employee Name",
+  },
+  {
+    key: "department",
+    label: "Department",
+  },
+  {
+    key: "date",
+    label: "Date",
+  },
+  {
+    key: "shiftIn",
+    label: "Shift In",
+  },
+  {
+    key: "timeIn",
+    label: "Time In",
+  },
+  {
+    key: "shiftOut",
+    label: "Shift Out",
+  },
+  {
+    key: "timeOut",
+    label: "Time Out",
+  },
+  {
+    key: "late",
+    label: "Late",
+  },
+  {
+    key: "early",
+    label: "Early",
+  },
+  {
+    key: "ot",
+    label: "OT",
+  },
+  {
+    key: "status",
+    label: "Status",
+  },
+];
+
+const MONTHLY_EXPORT_COLUMNS: ExportColumn<MonthlyReportRow>[] = [
+  {
+    key: "empNo",
+    label: "Employee No",
+  },
+  {
+    key: "name",
+    label: "Employee Name",
+  },
+  {
+    key: "department",
+    label: "Department",
+  },
+  {
+    key: "totalRows",
+    label: "Total Records",
+  },
+  {
+    key: "presentDays",
+    label: "Present Days",
+  },
+  {
+    key: "absentDays",
+    label: "Absent Days",
+  },
+  {
+    key: "lateDays",
+    label: "Late Days",
+  },
+  {
+    key: "missingCheckIn",
+    label: "Missing Check-In",
+  },
+  {
+    key: "missingCheckOut",
+    label: "Missing Check-Out",
   },
 ];
 
@@ -398,6 +495,80 @@ function ReportsPage() {
     setReport(null);
   }
 
+  function handleCsvExport() {
+  if (!report) {
+    return;
+  }
+
+  const reportTitle =
+    getReportTitle(report.type);
+
+  const fileName =
+    buildReportFileName(
+      reportTitle,
+      report.dateFrom,
+      report.dateTo
+    );
+
+  if (report.type === "monthly") {
+    exportToCsv<MonthlyReportRow>({
+      rows:
+        report.rows as MonthlyReportRow[],
+      columns:
+        MONTHLY_EXPORT_COLUMNS,
+      fileName,
+    });
+
+    return;
+  }
+
+  exportToCsv<ReportRow>({
+    rows:
+      report.rows as ReportRow[],
+    columns:
+      DETAIL_EXPORT_COLUMNS,
+    fileName,
+  });
+}
+
+function handleExcelExport() {
+  if (!report) {
+    return;
+  }
+
+  const reportTitle =
+    getReportTitle(report.type);
+
+  const fileName =
+    buildReportFileName(
+      reportTitle,
+      report.dateFrom,
+      report.dateTo
+    );
+
+  if (report.type === "monthly") {
+    exportToExcel<MonthlyReportRow>({
+      rows:
+        report.rows as MonthlyReportRow[],
+      columns:
+        MONTHLY_EXPORT_COLUMNS,
+      fileName,
+      sheetName: reportTitle,
+    });
+
+    return;
+  }
+
+  exportToExcel<ReportRow>({
+    rows:
+      report.rows as ReportRow[],
+    columns:
+      DETAIL_EXPORT_COLUMNS,
+    fileName,
+    sheetName: reportTitle,
+  });
+}
+
   function handlePrint() {
     if (report) {
       window.print();
@@ -424,20 +595,46 @@ function ReportsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="reports-v2-print-button"
-          onClick={
-            handlePrint
-          }
-          disabled={!report}
-        >
-          <span>
-            ⎙
-          </span>
+        <div className="reports-v2-export-actions">
+  <button
+    type="button"
+    className="reports-v2-export-button"
+    onClick={handleCsvExport}
+    disabled={!report}
+  >
+    <span>
+      CSV
+    </span>
 
-          Print Report
-        </button>
+    Export CSV
+  </button>
+
+  <button
+    type="button"
+    className="reports-v2-export-button reports-v2-excel-button"
+    onClick={handleExcelExport}
+    disabled={!report}
+  >
+    <span>
+      XLS
+    </span>
+
+    Export Excel
+  </button>
+
+  <button
+    type="button"
+    className="reports-v2-print-button"
+    onClick={handlePrint}
+    disabled={!report}
+  >
+    <span>
+      ⎙
+    </span>
+
+    Print / PDF
+  </button>
+</div>
       </header>
 
       <ReportTypeSelector

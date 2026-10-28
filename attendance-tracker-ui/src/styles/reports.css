@@ -311,6 +311,135 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+/* =========================================================
+   EXPORT ACTIONS
+   ========================================================= */
+
+.reports-v2-export-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  flex-wrap: wrap;
+}
+
+.reports-v2-export-button,
+.reports-v2-print-button {
+  min-height: 38px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 0 13px;
+
+  border-radius: 8px;
+
+  font-size: 8.5px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.reports-v2-export-button {
+  border: 1px solid #dbe2ea;
+
+  background: #ffffff;
+
+  color: #334155;
+}
+
+.reports-v2-export-button:hover:not(:disabled) {
+  border-color: #cbd5e1;
+
+  background: #f8fafc;
+
+  color: #0f172a;
+
+  transform: translateY(-1px);
+}
+
+.reports-v2-export-button span {
+  min-width: 28px;
+  height: 20px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 5px;
+
+  border-radius: 5px;
+
+  background: #e2e8f0;
+
+  color: #475569;
+
+  font-size: 6.5px;
+  font-weight: 800;
+
+  letter-spacing: 0.05em;
+}
+
+.reports-v2-excel-button {
+  border-color: #bbf7d0;
+
+  color: #166534;
+}
+
+.reports-v2-excel-button:hover:not(:disabled) {
+  border-color: #86efac;
+
+  background: #f0fdf4;
+
+  color: #14532d;
+}
+
+.reports-v2-excel-button span {
+  background: #dcfce7;
+
+  color: #166534;
+}
+
+.reports-v2-print-button {
+  border: 1px solid #2563eb;
+
+  background: #2563eb;
+
+  color: #ffffff;
+}
+
+.reports-v2-print-button:hover:not(:disabled) {
+  background: #1d4ed8;
+
+  border-color: #1d4ed8;
+
+  transform: translateY(-1px);
+}
+
+.reports-v2-print-button span {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.reports-v2-export-button:disabled,
+.reports-v2-print-button:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
 
 /* FILTERS */
 
@@ -1202,5 +1331,19 @@
 
   .reports-v2-result-meta {
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .reports-v2-header {
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .reports-v2-export-actions {
+    width: 100%;
+
+    justify-content: flex-start;
+    display: none !important;
   }
 }
