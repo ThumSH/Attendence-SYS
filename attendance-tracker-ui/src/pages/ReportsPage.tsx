@@ -10,6 +10,13 @@ import {
   getReport,
 } from "../services/api";
 
+import {
+  buildReportFileName,
+  exportToCsv,
+  exportToExcel,
+  type ExportColumn,
+} from "../utils/reportExport";
+
 import type {
   Department,
   Employee,
@@ -22,122 +29,315 @@ import type {
   ReportType,
 } from "../types/reports";
 
+import CompanyBrand from "../components/CompanyBrand";
+
+interface ReportTypeOption {
+  value: ReportType;
+  label: string;
+  description: string;
+  icon: string;
+}
+
+const REPORT_TYPES: ReportTypeOption[] = [
+  {
+    value: "daily",
+    label: "Daily Attendance",
+    description: "Full processed attendance records",
+    icon: "▤",
+  },
+  {
+    value: "monthly",
+    label: "Monthly Summary",
+    description: "Employee-level attendance totals",
+    icon: "▦",
+  },
+  {
+    value: "late",
+    label: "Late Employees",
+    description: "Late attendance records only",
+    icon: "◷",
+  },
+  {
+    value: "absent",
+    label: "Absent Employees",
+    description: "Employees marked absent",
+    icon: "×",
+  },
+  {
+    value: "missing",
+    label: "Missing Punches",
+    description: "Missing check-in or check-out",
+    icon: "!",
+  },
+  {
+    value: "ot",
+    label: "Overtime",
+    description: "Records containing overtime",
+    icon: "+",
+  },
+];
+
+const DETAIL_EXPORT_COLUMNS: ExportColumn<ReportRow>[] = [
+  {
+    key: "empNo",
+    label: "Employee No",
+  },
+  {
+    key: "name",
+    label: "Employee Name",
+  },
+  {
+    key: "department",
+    label: "Department",
+  },
+  {
+    key: "date",
+    label: "Date",
+  },
+  {
+    key: "shiftIn",
+    label: "Shift In",
+  },
+  {
+    key: "timeIn",
+    label: "Time In",
+  },
+  {
+    key: "shiftOut",
+    label: "Shift Out",
+  },
+  {
+    key: "timeOut",
+    label: "Time Out",
+  },
+  {
+    key: "late",
+    label: "Late",
+  },
+  {
+    key: "early",
+    label: "Early",
+  },
+  {
+    key: "ot",
+    label: "OT",
+  },
+  {
+    key: "status",
+    label: "Status",
+  },
+];
+
+const MONTHLY_EXPORT_COLUMNS: ExportColumn<MonthlyReportRow>[] = [
+  {
+    key: "empNo",
+    label: "Employee No",
+  },
+  {
+    key: "name",
+    label: "Employee Name",
+  },
+  {
+    key: "department",
+    label: "Department",
+  },
+  {
+    key: "totalRows",
+    label: "Total Records",
+  },
+  {
+    key: "presentDays",
+    label: "Present Days",
+  },
+  {
+    key: "absentDays",
+    label: "Absent Days",
+  },
+  {
+    key: "lateDays",
+    label: "Late Days",
+  },
+  {
+    key: "missingCheckIn",
+    label: "Missing Check-In",
+  },
+  {
+    key: "missingCheckOut",
+    label: "Missing Check-Out",
+  },
+];
+
 function ReportsPage() {
-  const [reportType, setReportType] =
-    useState<ReportType>("daily");
+  const defaultRange =
+    useMemo(
+      () => getDefaultDateRange(),
+      []
+    );
 
-  const [dateFrom, setDateFrom] =
-    useState("2026-09-01");
+  const [
+    reportType,
+    setReportType,
+  ] =
+    useState<ReportType>(
+      "daily"
+    );
 
-  const [dateTo, setDateTo] =
-    useState("2026-09-30");
+  const [
+    dateFrom,
+    setDateFrom,
+  ] =
+    useState(
+      defaultRange.from
+    );
 
-  const [departments, setDepartments] =
+  const [
+    dateTo,
+    setDateTo,
+  ] =
+    useState(
+      defaultRange.to
+    );
+
+  const [
+    departments,
+    setDepartments,
+  ] =
     useState<Department[]>([]);
 
-  const [employees, setEmployees] =
+  const [
+    employees,
+    setEmployees,
+  ] =
     useState<Employee[]>([]);
 
-  const [department, setDepartment] =
+  const [
+    department,
+    setDepartment,
+  ] =
     useState("");
 
-  const [selectedEmployeeNo, setSelectedEmployeeNo] =
+  const [
+    selectedEmployeeNo,
+    setSelectedEmployeeNo,
+  ] =
     useState("");
 
-  const [report, setReport] =
-    useState<ReportResponse | null>(null);
+  const [
+    report,
+    setReport,
+  ] =
+    useState<ReportResponse | null>(
+      null
+    );
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(false);
 
-  const [filtersLoading, setFiltersLoading] =
+  const [
+    filtersLoading,
+    setFiltersLoading,
+  ] =
     useState(true);
 
-  const [error, setError] =
-    useState<string | null>(null);
-
-  /* ==========================================
-     INITIAL FILTER DATA
-     ========================================== */
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
 
   useEffect(() => {
-    async function loadInitialData() {
-      setFiltersLoading(true);
-      setError(null);
+    let cancelled = false;
 
+    async function loadDepartments() {
       try {
-        const [
-          departmentData,
-          employeeData,
-        ] = await Promise.all([
-          getDepartments(),
-          getEmployees(),
-        ]);
+        const data =
+          await getDepartments();
 
-        setDepartments(departmentData);
-        setEmployees(employeeData);
+        if (!cancelled) {
+          setDepartments(data);
+        }
       } catch (err) {
         console.error(err);
 
-        setError(
-          "Unable to load report filters."
-        );
-      } finally {
-        setFiltersLoading(false);
+        if (!cancelled) {
+          setError(
+            "Unable to load report departments."
+          );
+        }
       }
     }
 
-    loadInitialData();
+    void loadDepartments();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /* ==========================================
-     DEPARTMENT EMPLOYEE FILTER
-     ========================================== */
-
   useEffect(() => {
-    async function loadEmployeesForDepartment() {
+    let cancelled = false;
+
+    async function loadEmployees() {
+      setFiltersLoading(true);
+
       try {
         const data =
           await getEmployees(
             undefined,
-            department || undefined
+            department ||
+              undefined
           );
+
+        if (cancelled) {
+          return;
+        }
 
         setEmployees(data);
 
         setSelectedEmployeeNo(
-          (currentEmployeeNo) => {
-            if (!currentEmployeeNo) {
+          (current) => {
+            if (!current) {
               return "";
             }
 
-            const employeeStillExists =
+            const stillExists =
               data.some(
                 (employee) =>
                   employee.empNo ===
-                  currentEmployeeNo
+                  current
               );
 
-            return employeeStillExists
-              ? currentEmployeeNo
+            return stillExists
+              ? current
               : "";
           }
         );
       } catch (err) {
         console.error(err);
 
-        setError(
-          "Unable to load employees."
-        );
+        if (!cancelled) {
+          setError(
+            "Unable to load report employees."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setFiltersLoading(false);
+        }
       }
     }
 
-    loadEmployeesForDepartment();
-  }, [department]);
+    void loadEmployees();
 
-  /* ==========================================
-     CURRENT EMPLOYEE
-     ========================================== */
+    return () => {
+      cancelled = true;
+    };
+  }, [department]);
 
   const selectedEmployee =
     useMemo(
@@ -153,22 +353,30 @@ function ReportsPage() {
       ]
     );
 
-  /* ==========================================
-     REPORT TITLE
-     ========================================== */
-
-  const reportTitle =
+  const selectedDepartmentName =
     useMemo(
       () =>
-        getReportTitle(
-          reportType
-        ),
-      [reportType]
+        departments.find(
+          (item) =>
+            item.code === department
+        )?.name ?? null,
+      [
+        departments,
+        department,
+      ]
     );
 
-  /* ==========================================
-     GENERATE REPORT
-     ========================================== */
+  const reportTypeOption =
+    useMemo(
+      () =>
+        REPORT_TYPES.find(
+          (item) =>
+            item.value ===
+            reportType
+        ) ??
+        REPORT_TYPES[0],
+      [reportType]
+    );
 
   async function handleGenerate() {
     setError(null);
@@ -197,8 +405,10 @@ function ReportsPage() {
           reportType,
           dateFrom,
           dateTo,
-          department || undefined,
-          selectedEmployeeNo || undefined
+          department ||
+            undefined,
+          selectedEmployeeNo ||
+            undefined
         );
 
       setReport(data);
@@ -215,154 +425,292 @@ function ReportsPage() {
     }
   }
 
-  /* ==========================================
-     RESET FILTERS
-     ========================================== */
-
   function handleReset() {
+    const dates =
+      getDefaultDateRange();
+
     setReportType("daily");
-
-    setDateFrom("2026-09-01");
-    setDateTo("2026-09-30");
-
+    setDateFrom(dates.from);
+    setDateTo(dates.to);
     setDepartment("");
     setSelectedEmployeeNo("");
-
     setReport(null);
     setError(null);
   }
 
-  /* ==========================================
-     PRINT
-     ========================================== */
+  function handleReportTypeChange(
+    value: ReportType
+  ) {
+    setReportType(value);
+    setReport(null);
+  }
+
+  function handleDepartmentChange(
+    value: string
+  ) {
+    setDepartment(value);
+    setSelectedEmployeeNo("");
+    setReport(null);
+  }
+
+  function handleEmployeeChange(
+    value: string
+  ) {
+    setSelectedEmployeeNo(
+      value
+    );
+
+    setReport(null);
+  }
+
+  function handleDateFromChange(
+    value: string
+  ) {
+    setDateFrom(value);
+    setReport(null);
+  }
+
+  function handleDateToChange(
+    value: string
+  ) {
+    setDateTo(value);
+    setReport(null);
+  }
+
+  function applyThisMonth() {
+    const dates =
+      getDefaultDateRange();
+
+    setDateFrom(dates.from);
+    setDateTo(dates.to);
+    setReport(null);
+  }
+
+  function applyLast30Days() {
+    const dates =
+      getLast30DaysRange();
+
+    setDateFrom(dates.from);
+    setDateTo(dates.to);
+    setReport(null);
+  }
+
+  function handleCsvExport() {
+  if (!report) {
+    return;
+  }
+
+  const reportTitle =
+    getReportTitle(report.type);
+
+  const fileName =
+    buildReportFileName(
+      reportTitle,
+      report.dateFrom,
+      report.dateTo
+    );
+
+  if (report.type === "monthly") {
+    exportToCsv<MonthlyReportRow>({
+      rows:
+        report.rows as MonthlyReportRow[],
+      columns:
+        MONTHLY_EXPORT_COLUMNS,
+      fileName,
+    });
+
+    return;
+  }
+
+  exportToCsv<ReportRow>({
+    rows:
+      report.rows as ReportRow[],
+    columns:
+      DETAIL_EXPORT_COLUMNS,
+    fileName,
+  });
+}
+
+function handleExcelExport() {
+  if (!report) {
+    return;
+  }
+
+  const reportTitle =
+    getReportTitle(report.type);
+
+  const fileName =
+    buildReportFileName(
+      reportTitle,
+      report.dateFrom,
+      report.dateTo
+    );
+
+  if (report.type === "monthly") {
+    exportToExcel<MonthlyReportRow>({
+      rows:
+        report.rows as MonthlyReportRow[],
+      columns:
+        MONTHLY_EXPORT_COLUMNS,
+      fileName,
+      sheetName: reportTitle,
+    });
+
+    return;
+  }
+
+  exportToExcel<ReportRow>({
+    rows:
+      report.rows as ReportRow[],
+    columns:
+      DETAIL_EXPORT_COLUMNS,
+    fileName,
+    sheetName: reportTitle,
+  });
+}
 
   function handlePrint() {
-    if (!report) {
-      return;
+    if (report) {
+      window.print();
     }
-
-    window.print();
   }
 
   return (
-    <main className="main-content">
-      {/* ======================================
-          HEADER
-          ====================================== */}
-
-      <header className="page-header reports-page-header">
+    <main className="main-content reports-v2">
+      <header className="reports-v2-header">
         <div>
-          <span className="eyebrow">
+          <span className="reports-v2-eyebrow">
             Attendance Management
           </span>
 
-          <h1>Reports</h1>
+          <h1>
+            Reports
+          </h1>
 
           <p>
-            Generate attendance reports
-            by employee, department and
+            Generate processed attendance
+            reports by report type,
+            employee, department and
             date range.
           </p>
         </div>
 
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={handlePrint}
-          disabled={!report}
-        >
-          Print Report
-        </button>
+        <div className="reports-v2-export-actions">
+  <button
+    type="button"
+    className="reports-v2-export-button"
+    onClick={handleCsvExport}
+    disabled={!report}
+  >
+    <span>
+      CSV
+    </span>
+
+    Export CSV
+  </button>
+
+  <button
+    type="button"
+    className="reports-v2-export-button reports-v2-excel-button"
+    onClick={handleExcelExport}
+    disabled={!report}
+  >
+    <span>
+      XLS
+    </span>
+
+    Export Excel
+  </button>
+
+  <button
+    type="button"
+    className="reports-v2-print-button"
+    onClick={handlePrint}
+    disabled={!report}
+  >
+    <span>
+      ⎙
+    </span>
+
+    Print / PDF
+  </button>
+</div>
       </header>
 
-      {/* ======================================
-          FILTERS
-          ====================================== */}
+      <ReportTypeSelector
+        reportType={
+          reportType
+        }
+        onChange={
+          handleReportTypeChange
+        }
+      />
 
-      <section className="report-filter-card">
-        <div className="reports-filter-heading">
+      <section className="reports-v2-filter-panel">
+        <div className="reports-v2-filter-heading">
           <div>
-            <h2>
+            <span>
               Report Filters
-            </h2>
+            </span>
 
-            <p>
-              Select the report type and
-              filters you want to use.
-            </p>
+            <strong>
+              {reportTypeOption.label}
+            </strong>
+
+            <small>
+              {
+                reportTypeOption.description
+              }
+            </small>
           </div>
 
-          <button
-            type="button"
-            className="reports-reset-button"
-            onClick={handleReset}
-          >
-            Reset
-          </button>
+          <div className="reports-v2-quick-actions">
+            <button
+              type="button"
+              onClick={
+                applyThisMonth
+              }
+            >
+              This Month
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                applyLast30Days
+              }
+            >
+              Last 30 Days
+            </button>
+
+            <button
+              type="button"
+              className="reports-v2-reset"
+              onClick={
+                handleReset
+              }
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
-        <div className="reports-filter-grid">
-          {/* REPORT TYPE */}
-
-          <div className="field">
-            <label>
-              Report Type
-            </label>
-
-            <select
-              value={reportType}
-              onChange={(e) => {
-                setReportType(
-                  e.target
-                    .value as ReportType
-                );
-
-                setReport(null);
-              }}
-            >
-              <option value="daily">
-                Daily Attendance
-              </option>
-
-              <option value="monthly">
-                Monthly Summary
-              </option>
-
-              <option value="late">
-                Late Employees
-              </option>
-
-              <option value="absent">
-                Absent Employees
-              </option>
-
-              <option value="missing">
-                Missing Punches
-              </option>
-
-              <option value="ot">
-                Overtime
-              </option>
-            </select>
-          </div>
-
-          {/* DEPARTMENT */}
-
-          <div className="field">
-            <label>
+        <div className="reports-v2-filter-grid">
+          <label className="reports-v2-field">
+            <span>
               Department
-            </label>
+            </span>
 
             <select
               value={department}
-              disabled={filtersLoading}
-              onChange={(e) => {
-                setDepartment(
-                  e.target.value
-                );
-
-                setReport(null);
-              }}
+              disabled={
+                filtersLoading
+              }
+              onChange={(event) =>
+                handleDepartmentChange(
+                  event.target.value
+                )
+              }
             >
               <option value="">
                 All Departments
@@ -379,14 +727,12 @@ function ReportsPage() {
                 )
               )}
             </select>
-          </div>
+          </label>
 
-          {/* EMPLOYEE */}
-
-          <div className="field reports-employee-field">
-            <label>
+          <label className="reports-v2-field reports-v2-employee-field">
+            <span>
               Employee
-            </label>
+            </span>
 
             <select
               value={
@@ -395,13 +741,11 @@ function ReportsPage() {
               disabled={
                 filtersLoading
               }
-              onChange={(e) => {
-                setSelectedEmployeeNo(
-                  e.target.value
-                );
-
-                setReport(null);
-              }}
+              onChange={(event) =>
+                handleEmployeeChange(
+                  event.target.value
+                )
+              }
             >
               <option value="">
                 All Employees
@@ -417,218 +761,211 @@ function ReportsPage() {
                       employee.empNo
                     }
                   >
-                    {employee.empNo}
+                    {
+                      employee.empNo
+                    }
                     {" - "}
-                    {employee.name}
+                    {
+                      employee.name
+                    }
                   </option>
                 )
               )}
             </select>
+          </label>
 
-            {selectedEmployee && (
-              <small className="reports-selected-employee">
-                {selectedEmployee.department ||
-                  "No department"}
-                {selectedEmployee.shift
-                  ? ` • Shift ${selectedEmployee.shift}`
-                  : ""}
-              </small>
-            )}
-          </div>
-
-          {/* FROM */}
-
-          <div className="field">
-            <label>
+          <label className="reports-v2-field">
+            <span>
               From
-            </label>
+            </span>
 
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(
-                  e.target.value
-                );
-
-                setReport(null);
-              }}
+              onChange={(event) =>
+                handleDateFromChange(
+                  event.target.value
+                )
+              }
             />
-          </div>
+          </label>
 
-          {/* TO */}
-
-          <div className="field">
-            <label>
+          <label className="reports-v2-field">
+            <span>
               To
-            </label>
+            </span>
 
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => {
-                setDateTo(
-                  e.target.value
-                );
-
-                setReport(null);
-              }}
+              onChange={(event) =>
+                handleDateToChange(
+                  event.target.value
+                )
+              }
             />
-          </div>
+          </label>
 
-          {/* GENERATE */}
-
-          <div className="button-field">
-            <button
-              type="button"
-              className="primary-button"
-              onClick={
-                handleGenerate
-              }
-              disabled={
-                loading ||
-                filtersLoading
-              }
-            >
-              {loading
-                ? "Generating..."
-                : "Generate Report"}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="reports-v2-generate-button"
+            onClick={() =>
+              void handleGenerate()
+            }
+            disabled={
+              loading ||
+              filtersLoading
+            }
+          >
+            {loading
+              ? "Generating..."
+              : "Generate Report"}
+          </button>
         </div>
 
+        {(selectedDepartmentName ||
+          selectedEmployee) && (
+          <div className="reports-v2-active-filters">
+            <span>
+              Active Filters
+            </span>
+
+            {selectedDepartmentName && (
+              <strong>
+                Department:{" "}
+                {
+                  selectedDepartmentName
+                }
+              </strong>
+            )}
+
+            {selectedEmployee && (
+              <strong>
+                Employee:{" "}
+                {
+                  selectedEmployee.empNo
+                }{" "}
+                ·{" "}
+                {
+                  selectedEmployee.name
+                }
+              </strong>
+            )}
+          </div>
+        )}
+
         {error && (
-          <div className="error-message">
-            {error}
+          <div className="reports-v2-error">
+            <strong>
+              Unable to generate report
+            </strong>
+
+            <span>
+              {error}
+            </span>
           </div>
         )}
       </section>
 
-      {/* ======================================
-          NO REPORT YET
-          ====================================== */}
-
       {!report && !loading && (
-        <section className="reports-empty-state">
-          <div className="reports-empty-icon">
-            ▤
-          </div>
-
-          <h2>
-            Generate a report
-          </h2>
-
-          <p>
-            Select the report type,
-            department, employee and date
-            range above.
-          </p>
-        </section>
+        <ReportEmptyState />
       )}
-
-      {/* ======================================
-          LOADING
-          ====================================== */}
 
       {loading && (
-        <section className="reports-loading-state">
-          <div className="dashboard-loader" />
-
-          <strong>
-            Generating report...
-          </strong>
-
-          <span>
-            Retrieving attendance records.
-          </span>
-        </section>
+        <ReportLoadingState />
       )}
-
-      {/* ======================================
-          REPORT RESULT
-          ====================================== */}
 
       {report && !loading && (
         <>
-          <section className="reports-summary">
-            <ReportSummaryCards
-              report={report}
-            />
-          </section>
+          <ReportPrintHeader
+            report={report}
+            reportTitle={
+              getReportTitle(
+                report.type
+              )
+            }
+            departmentName={
+              selectedDepartmentName
+            }
+            employee={
+              selectedEmployee
+            }
+          />
 
-          <section className="report-card reports-result-card">
-            <div className="report-heading">
-              <div>
-                <span className="dashboard-section-label">
-                  Attendance Report
-                </span>
+          <ReportSummaryCards
+            report={report}
+          />
 
-                <h2>
-                  {reportTitle}
-                </h2>
-
-                <p>
-                  {formatDate(
-                    report.dateFrom
-                  )}
-                  {" — "}
-                  {formatDate(
-                    report.dateTo
-                  )}
-                </p>
-              </div>
-
-              <div className="reports-result-meta">
-                <span>
-                  {report.rows.length}{" "}
-                  records
-                </span>
-
-                {department && (
-                  <span>
-                    Department:{" "}
-                    {getDepartmentName(
-                      departments,
-                      department
-                    )}
-                  </span>
-                )}
-
-                {selectedEmployee && (
-                  <span>
-                    Employee:{" "}
-                    {
-                      selectedEmployee.empNo
-                    }
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {report.type ===
-            "monthly" ? (
-              <MonthlyReportTable
-                rows={
-                  report.rows as MonthlyReportRow[]
-                }
-              />
-            ) : (
-              <DetailReportTable
-                rows={
-                  report.rows as ReportRow[]
-                }
-              />
-            )}
-          </section>
+          <ReportResult
+            report={report}
+            title={
+              getReportTitle(
+                report.type
+              )
+            }
+            departmentName={
+              selectedDepartmentName
+            }
+            employee={
+              selectedEmployee
+            }
+          />
         </>
       )}
     </main>
   );
 }
 
-/* =====================================================
-   REPORT SUMMARY
-   ===================================================== */
+function ReportTypeSelector({
+  reportType,
+  onChange,
+}: {
+  reportType: ReportType;
+
+  onChange:
+    (value: ReportType) =>
+      void;
+}) {
+  return (
+    <section className="reports-v2-type-grid">
+      {REPORT_TYPES.map(
+        (item) => (
+          <button
+            type="button"
+            key={item.value}
+            className={
+              reportType ===
+              item.value
+                ? "reports-v2-type-card active"
+                : "reports-v2-type-card"
+            }
+            onClick={() =>
+              onChange(
+                item.value
+              )
+            }
+          >
+            <span className="reports-v2-type-icon">
+              {item.icon}
+            </span>
+
+            <span className="reports-v2-type-copy">
+              <strong>
+                {item.label}
+              </strong>
+
+              <small>
+                {
+                  item.description
+                }
+              </small>
+            </span>
+          </button>
+        )
+      )}
+    </section>
+  );
+}
 
 function ReportSummaryCards({
   report,
@@ -636,7 +973,8 @@ function ReportSummaryCards({
   report: ReportResponse;
 }) {
   if (
-    report.type === "monthly"
+    report.type ===
+    "monthly"
   ) {
     const rows =
       report.rows as MonthlyReportRow[];
@@ -687,7 +1025,7 @@ function ReportSummaryCards({
       );
 
     return (
-      <div className="reports-summary-grid">
+      <section className="reports-v2-summary-grid reports-v2-summary-monthly">
         <ReportStat
           label="Employees"
           value={
@@ -695,43 +1033,59 @@ function ReportSummaryCards({
               .employeeCount ??
             rows.length
           }
+          caption="Employees in report"
+          type="records"
         />
 
         <ReportStat
           label="Present Days"
-          value={totalPresent}
+          value={
+            totalPresent
+          }
+          caption="Recorded present days"
           type="present"
         />
 
         <ReportStat
           label="Absent Days"
-          value={totalAbsent}
+          value={
+            totalAbsent
+          }
+          caption="Recorded absences"
           type="absent"
         />
 
         <ReportStat
           label="Late Days"
-          value={totalLate}
+          value={
+            totalLate
+          }
+          caption="Late attendance days"
           type="late"
         />
 
         <ReportStat
           label="Missing Punches"
-          value={totalMissing}
+          value={
+            totalMissing
+          }
+          caption="Missing in + out"
           type="missing"
         />
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="reports-summary-grid">
+    <section className="reports-v2-summary-grid">
       <ReportStat
         label="Records"
         value={
           report.summary
             .recordCount ?? 0
         }
+        caption="Rows in report"
+        type="records"
       />
 
       <ReportStat
@@ -740,6 +1094,7 @@ function ReportSummaryCards({
           report.summary.present ??
           0
         }
+        caption="Present records"
         type="present"
       />
 
@@ -749,6 +1104,7 @@ function ReportSummaryCards({
           report.summary.absent ??
           0
         }
+        caption="Absent records"
         type="absent"
       />
 
@@ -758,6 +1114,7 @@ function ReportSummaryCards({
           report.summary.late ??
           0
         }
+        caption="Late records"
         type="late"
       />
 
@@ -767,6 +1124,7 @@ function ReportSummaryCards({
           report.summary
             .missingCheckIn ?? 0
         }
+        caption="Missing check-in"
         type="missing"
       />
 
@@ -776,6 +1134,7 @@ function ReportSummaryCards({
           report.summary
             .missingCheckOut ?? 0
         }
+        caption="Missing check-out"
         type="missing"
       />
 
@@ -786,7 +1145,7 @@ function ReportSummaryCards({
             .totalLate ??
           "0:00"
         }
-        subtitle="Hours"
+        caption={`${report.summary.totalLateMinutes ?? 0} minutes`}
         type="late"
       />
 
@@ -797,39 +1156,36 @@ function ReportSummaryCards({
             .totalEarly ??
           "0:00"
         }
-        subtitle="Hours"
+        caption={`${report.summary.totalEarlyMinutes ?? 0} minutes`}
         type="early"
       />
 
       <ReportStat
         label="Total OT"
         value={
-          report.summary.totalOT ??
+          report.summary
+            .totalOT ??
           "0:00"
         }
-        subtitle="Hours"
+        caption={`${report.summary.totalOtMinutes ?? 0} minutes`}
         type="ot"
       />
-    </div>
+    </section>
   );
 }
-
-/* =====================================================
-   STAT CARD
-   ===================================================== */
 
 function ReportStat({
   label,
   value,
-  subtitle,
-  type = "default",
+  caption,
+  type,
 }: {
   label: string;
-  value: number | string;
-  subtitle?: string;
+  value: string | number;
+  caption: string;
 
-  type?:
-    | "default"
+  type:
+    | "records"
     | "present"
     | "absent"
     | "late"
@@ -838,8 +1194,8 @@ function ReportStat({
     | "ot";
 }) {
   return (
-    <div
-      className={`report-stat report-stat-${type}`}
+    <article
+      className={`reports-v2-stat ${type}`}
     >
       <span>
         {label}
@@ -849,18 +1205,99 @@ function ReportStat({
         {value}
       </strong>
 
-      {subtitle && (
-        <small>
-          {subtitle}
-        </small>
-      )}
-    </div>
+      <small>
+        {caption}
+      </small>
+    </article>
   );
 }
 
-/* =====================================================
-   DETAIL REPORT TABLE
-   ===================================================== */
+function ReportResult({
+  report,
+  title,
+  departmentName,
+  employee,
+}: {
+  report: ReportResponse;
+  title: string;
+  departmentName: string | null;
+  employee: Employee | null;
+}) {
+  return (
+    <section className="reports-v2-result-panel">
+      <div className="reports-v2-result-heading">
+        <div>
+          <span>
+            Attendance Report
+          </span>
+
+          <h2>
+            {title}
+          </h2>
+
+          <p>
+            {formatDate(
+              report.dateFrom
+            )}
+            {" — "}
+            {formatDate(
+              report.dateTo
+            )}
+          </p>
+        </div>
+
+        <div className="reports-v2-result-meta">
+          <div>
+            <strong>
+              {
+                report.rows.length
+              }
+            </strong>
+
+            <span>
+              records
+            </span>
+          </div>
+
+          {departmentName && (
+            <small>
+              {
+                departmentName
+              }
+            </small>
+          )}
+
+          {employee && (
+            <small>
+              {
+                employee.empNo
+              }
+              {" · "}
+              {
+                employee.name
+              }
+            </small>
+          )}
+        </div>
+      </div>
+
+      {report.type ===
+      "monthly" ? (
+        <MonthlyReportTable
+          rows={
+            report.rows as MonthlyReportRow[]
+          }
+        />
+      ) : (
+        <DetailReportTable
+          rows={
+            report.rows as ReportRow[]
+          }
+        />
+      )}
+    </section>
+  );
+}
 
 function DetailReportTable({
   rows,
@@ -868,21 +1305,53 @@ function DetailReportTable({
   rows: ReportRow[];
 }) {
   return (
-    <div className="table-wrapper reports-table-wrapper">
-      <table className="attendance-table reports-table">
+    <div className="reports-v2-table-wrapper">
+      <table className="reports-v2-table reports-v2-detail-table">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Employee</th>
-            <th>Department</th>
-            <th>Shift In</th>
-            <th>Time In</th>
-            <th>Shift Out</th>
-            <th>Time Out</th>
-            <th>Late</th>
-            <th>Early</th>
-            <th>OT</th>
-            <th>Status</th>
+            <th>
+              Employee
+            </th>
+
+            <th>
+              Department
+            </th>
+
+            <th>
+              Date
+            </th>
+
+            <th>
+              Shift In
+            </th>
+
+            <th>
+              Time In
+            </th>
+
+            <th>
+              Shift Out
+            </th>
+
+            <th>
+              Time Out
+            </th>
+
+            <th>
+              Late
+            </th>
+
+            <th>
+              Early
+            </th>
+
+            <th>
+              OT
+            </th>
+
+            <th>
+              Status
+            </th>
           </tr>
         </thead>
 
@@ -891,9 +1360,10 @@ function DetailReportTable({
             <tr>
               <td
                 colSpan={11}
-                className="empty-row"
+                className="reports-v2-table-empty"
               >
-                No report records found.
+                No records found for the
+                selected report filters.
               </td>
             </tr>
           ) : (
@@ -903,31 +1373,36 @@ function DetailReportTable({
                 index
               ) => (
                 <tr
-                  key={`${row.empNo}-${row.date}-${index}`}
+                  key={`${row.empNo ?? "employee"}-${row.date}-${index}`}
                 >
                   <td>
-                    {formatDate(
-                      row.date
-                    )}
+                    <EmployeeCell
+                      empNo={
+                        row.empNo
+                      }
+                      name={
+                        row.name
+                      }
+                    />
                   </td>
 
                   <td>
-                    <div className="report-employee-cell">
-                      <strong>
-                        {row.name ||
-                          "Unknown"}
-                      </strong>
-
-                      <span>
-                        {row.empNo ||
-                          "-"}
-                      </span>
-                    </div>
+                    <DepartmentCell
+                      name={
+                        row.department
+                      }
+                      code={
+                        row.departmentCode
+                      }
+                    />
                   </td>
 
                   <td>
-                    {row.department ||
-                      "-"}
+                    <DateCell
+                      value={
+                        row.date
+                      }
+                    />
                   </td>
 
                   <td>
@@ -937,7 +1412,7 @@ function DetailReportTable({
                   </td>
 
                   <td>
-                    {renderTimeIn(
+                    {renderAttendanceTime(
                       row.timeIn
                     )}
                   </td>
@@ -949,13 +1424,14 @@ function DetailReportTable({
                   </td>
 
                   <td>
-                    {displayValue(
-                      row.timeOut
+                    {renderTimeOut(
+                      row.timeOut,
+                      row.status
                     )}
                   </td>
 
                   <td>
-                    <ReportMetric
+                    <MetricValue
                       value={
                         row.late
                       }
@@ -964,7 +1440,7 @@ function DetailReportTable({
                   </td>
 
                   <td>
-                    <ReportMetric
+                    <MetricValue
                       value={
                         row.early
                       }
@@ -973,14 +1449,16 @@ function DetailReportTable({
                   </td>
 
                   <td>
-                    <ReportMetric
-                      value={row.ot}
+                    <MetricValue
+                      value={
+                        row.ot
+                      }
                       type="ot"
                     />
                   </td>
 
                   <td>
-                    <ReportStatus
+                    <StatusBadge
                       status={
                         row.status
                       }
@@ -996,18 +1474,14 @@ function DetailReportTable({
   );
 }
 
-/* =====================================================
-   MONTHLY TABLE
-   ===================================================== */
-
 function MonthlyReportTable({
   rows,
 }: {
   rows: MonthlyReportRow[];
 }) {
   return (
-    <div className="table-wrapper reports-table-wrapper">
-      <table className="attendance-table reports-table monthly-report-table">
+    <div className="reports-v2-table-wrapper">
+      <table className="reports-v2-table reports-v2-monthly-table">
         <thead>
           <tr>
             <th>
@@ -1016,6 +1490,10 @@ function MonthlyReportTable({
 
             <th>
               Department
+            </th>
+
+            <th>
+              Total Rows
             </th>
 
             <th>
@@ -1044,11 +1522,11 @@ function MonthlyReportTable({
           {rows.length === 0 ? (
             <tr>
               <td
-                colSpan={7}
-                className="empty-row"
+                colSpan={8}
+                className="reports-v2-table-empty"
               >
-                No monthly attendance
-                records found.
+                No monthly records found
+                for the selected filters.
               </td>
             </tr>
           ) : (
@@ -1058,65 +1536,81 @@ function MonthlyReportTable({
                 index
               ) => (
                 <tr
-                  key={`${row.empNo}-${index}`}
+                  key={`${row.empNo ?? "employee"}-${index}`}
                 >
                   <td>
-                    <div className="report-employee-cell">
-                      <strong>
-                        {row.name ||
-                          "Unknown"}
-                      </strong>
-
-                      <span>
-                        {row.empNo ||
-                          "-"}
-                      </span>
-                    </div>
+                    <EmployeeCell
+                      empNo={
+                        row.empNo
+                      }
+                      name={
+                        row.name
+                      }
+                    />
                   </td>
 
                   <td>
-                    {row.department ||
-                      "-"}
+                    <DepartmentCell
+                      name={
+                        row.department
+                      }
+                      code={
+                        row.departmentCode
+                      }
+                    />
                   </td>
 
                   <td>
-                    <span className="report-value present">
-                      {
+                    <NumberBadge
+                      value={
+                        row.totalRows
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <NumberBadge
+                      value={
                         row.presentDays
                       }
-                    </span>
+                      type="present"
+                    />
                   </td>
 
                   <td>
-                    <span className="report-value absent">
-                      {
+                    <NumberBadge
+                      value={
                         row.absentDays
                       }
-                    </span>
+                      type="absent"
+                    />
                   </td>
 
                   <td>
-                    <span className="report-value late">
-                      {
+                    <NumberBadge
+                      value={
                         row.lateDays
                       }
-                    </span>
+                      type="late"
+                    />
                   </td>
 
                   <td>
-                    <span className="report-value missing">
-                      {
+                    <NumberBadge
+                      value={
                         row.missingCheckIn
                       }
-                    </span>
+                      type="missing"
+                    />
                   </td>
 
                   <td>
-                    <span className="report-value missing">
-                      {
+                    <NumberBadge
+                      value={
                         row.missingCheckOut
                       }
-                    </span>
+                      type="missing"
+                    />
                   </td>
                 </tr>
               )
@@ -1128,39 +1622,114 @@ function MonthlyReportTable({
   );
 }
 
-/* =====================================================
-   REPORT STATUS
-   ===================================================== */
-
-function ReportStatus({
-  status,
+function EmployeeCell({
+  empNo,
+  name,
 }: {
-  status: string;
+  empNo: string | null;
+  name: string | null;
 }) {
-  const normalized =
-    status
-      .toLowerCase()
-      .replaceAll(
-        " ",
-        "-"
-      );
+  return (
+    <div className="reports-v2-employee-cell">
+      <div className="reports-v2-avatar">
+        {getInitials(name)}
+      </div>
+
+      <div>
+        <strong>
+          {name ||
+            "Unknown Employee"}
+        </strong>
+
+        <span>
+          {empNo ||
+            "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DepartmentCell({
+  name,
+  code,
+}: {
+  name: string | null;
+  code: string | null;
+}) {
+  return (
+    <div className="reports-v2-department-cell">
+      <strong>
+        {name ||
+          "—"}
+      </strong>
+
+      {code && (
+        <span>
+          Code{" "}
+          {code}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function DateCell({
+  value,
+}: {
+  value: string;
+}) {
+  const date =
+    parseLocalDate(value);
 
   return (
-    <span
-      className={`reports-status reports-status-${normalized}`}
-    >
-      <span className="status-dot" />
+    <div className="reports-v2-date-cell">
+      <strong>
+        {date.toLocaleDateString(
+          "en-GB",
+          {
+            weekday: "short",
+          }
+        )}
+      </strong>
 
-      {status}
+      <span>
+        {date.toLocaleDateString(
+          "en-GB",
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }
+        )}
+      </span>
+    </div>
+  );
+}
+
+function NumberBadge({
+  value,
+  type = "default",
+}: {
+  value: number;
+
+  type?:
+    | "default"
+    | "present"
+    | "absent"
+    | "late"
+    | "missing";
+}) {
+  return (
+    <span
+      className={`reports-v2-number ${type}`}
+    >
+      {value}
     </span>
   );
 }
 
-/* =====================================================
-   REPORT METRIC
-   ===================================================== */
-
-function ReportMetric({
+function MetricValue({
   value,
   type,
 }: {
@@ -1171,13 +1740,9 @@ function ReportMetric({
     | "early"
     | "ot";
 }) {
-  if (
-    !value ||
-    value === "0" ||
-    value === "00:00"
-  ) {
+  if (isZeroMetric(value)) {
     return (
-      <span className="metric-empty">
+      <span className="reports-v2-empty-value">
         —
       </span>
     );
@@ -1185,102 +1750,140 @@ function ReportMetric({
 
   return (
     <span
-      className={`dashboard-metric ${type}`}
+      className={`reports-v2-metric ${type}`}
     >
       {value}
     </span>
   );
 }
 
-/* =====================================================
-   HELPERS
-   ===================================================== */
+function StatusBadge({
+  status,
+}: {
+  status: string;
+}) {
+  return (
+    <span
+      className={`reports-v2-status ${getStatusClass(
+        status
+      )}`}
+    >
+      <i />
 
-function displayValue(
-  value: string | null
-) {
-  if (
-    !value ||
-    value.trim() === ""
-  ) {
-    return (
-      <span className="metric-empty">
-        —
-      </span>
-    );
-  }
-
-  return value;
-}
-
-function renderTimeIn(
-  value: string | null
-) {
-  if (
-    !value ||
-    value.trim() === ""
-  ) {
-    return (
-      <span className="missing-time">
-        Missing
-      </span>
-    );
-  }
-
-  if (
-    value.toUpperCase() ===
-    "AB"
-  ) {
-    return (
-      <span className="time-absent">
-        AB
-      </span>
-    );
-  }
-
-  if (
-    value.toLowerCase() ===
-    "sunday"
-  ) {
-    return (
-      <span className="time-sunday">
-        Sunday
-      </span>
-    );
-  }
-
-  return value;
-}
-
-function formatDate(
-  date: string
-) {
-  if (!date) {
-    return "-";
-  }
-
-  return new Date(
-    `${date}T00:00:00`
-  ).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
+      {status}
+    </span>
   );
 }
 
-function getDepartmentName(
-  departments: Department[],
-  code: string
-) {
+function ReportEmptyState() {
   return (
-    departments.find(
-      (department) =>
-        department.code ===
-        code
-    )?.name ?? code
+    <section className="reports-v2-empty-state">
+      <div>
+        ▤
+      </div>
+
+      <h2>
+        Generate a report
+      </h2>
+
+      <p>
+        Choose a report type and filters
+        above, then select Generate Report.
+      </p>
+    </section>
+  );
+}
+
+function ReportLoadingState() {
+  return (
+    <section className="reports-v2-loading-state">
+      <div className="reports-v2-spinner" />
+
+      <strong>
+        Generating report
+      </strong>
+
+      <span>
+        Retrieving processed attendance
+        records...
+      </span>
+    </section>
+  );
+}
+
+function ReportPrintHeader({
+  report,
+  reportTitle,
+  departmentName,
+  employee,
+}: {
+  report: ReportResponse;
+  reportTitle: string;
+  departmentName: string | null;
+  employee: Employee | null;
+}) {
+  return (
+    <section className="reports-v2-print-header">
+      <div className="reports-v2-print-brand-row">
+        <CompanyBrand
+          variant="print"
+        />
+
+        <div className="reports-v2-print-title">
+          <span>
+            Attendance Report
+          </span>
+
+          <h1>
+            {reportTitle}
+          </h1>
+        </div>
+      </div>
+
+      <div className="reports-v2-print-info">
+        <div>
+          <span>
+            Date From
+          </span>
+
+          <strong>
+            {report.dateFrom}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Date To
+          </span>
+
+          <strong>
+            {report.dateTo}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Department
+          </span>
+
+          <strong>
+            {departmentName || "All Departments"}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Employee
+          </span>
+
+          <strong>
+            {employee
+              ? `${employee.empNo} · ${employee.name}`
+              : "All Employees"}
+          </strong>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1288,9 +1891,6 @@ function getReportTitle(
   type: ReportType
 ) {
   switch (type) {
-    case "daily":
-      return "Daily Attendance Report";
-
     case "monthly":
       return "Monthly Attendance Summary";
 
@@ -1301,14 +1901,254 @@ function getReportTitle(
       return "Absent Employees Report";
 
     case "missing":
-      return "Missing Punch Report";
+      return "Missing Punches Report";
 
     case "ot":
       return "Overtime Report";
 
     default:
-      return "Attendance Report";
+      return "Daily Attendance Report";
   }
+}
+
+function getDefaultDateRange() {
+  const today =
+    new Date();
+
+  const firstDay =
+    new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1
+    );
+
+  return {
+    from:
+      formatDateInput(
+        firstDay
+      ),
+
+    to:
+      formatDateInput(
+        today
+      ),
+  };
+}
+
+function getLast30DaysRange() {
+  const today =
+    new Date();
+
+  const from =
+    new Date(today);
+
+  from.setDate(
+    today.getDate() - 29
+  );
+
+  return {
+    from:
+      formatDateInput(from),
+
+    to:
+      formatDateInput(today),
+  };
+}
+
+function formatDateInput(
+  value: Date
+) {
+  const year =
+    value.getFullYear();
+
+  const month =
+    String(
+      value.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const day =
+    String(
+      value.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(
+  value: string
+) {
+  return parseLocalDate(
+    value
+  ).toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  );
+}
+
+function parseLocalDate(
+  value: string
+) {
+  return new Date(
+    `${value}T00:00:00`
+  );
+}
+
+function displayValue(
+  value: string | null
+) {
+  if (
+    !value ||
+    !value.trim()
+  ) {
+    return (
+      <span className="reports-v2-empty-value">
+        —
+      </span>
+    );
+  }
+
+  return value;
+}
+
+function renderAttendanceTime(
+  value: string | null
+) {
+  if (
+    !value ||
+    !value.trim()
+  ) {
+    return (
+      <span className="reports-v2-missing-time">
+        Missing
+      </span>
+    );
+  }
+
+  const normalized =
+    value
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalized === "ab"
+  ) {
+    return (
+      <span className="reports-v2-absent-time">
+        AB
+      </span>
+    );
+  }
+
+  if (
+    normalized === "sunday"
+  ) {
+    return (
+      <span className="reports-v2-sunday-time">
+        Sunday
+      </span>
+    );
+  }
+
+  return value;
+}
+
+function renderTimeOut(
+  value: string | null,
+  status: string
+) {
+  if (
+    status ===
+      "Missing Check-Out" &&
+    (!value ||
+      !value.trim())
+  ) {
+    return (
+      <span className="reports-v2-missing-time">
+        Missing
+      </span>
+    );
+  }
+
+  return displayValue(value);
+}
+
+function isZeroMetric(
+  value: string | null
+) {
+  if (!value) {
+    return true;
+  }
+
+  const normalized =
+    value.trim();
+
+  return (
+    normalized === "" ||
+    normalized === "0" ||
+    normalized === "0:00" ||
+    normalized === "00:00"
+  );
+}
+
+function getStatusClass(
+  status: string
+) {
+  switch (
+    status
+      .trim()
+      .toLowerCase()
+  ) {
+    case "present":
+      return "present";
+
+    case "late":
+      return "late";
+
+    case "absent":
+      return "absent";
+
+    case "missing check-in":
+    case "missing check-out":
+      return "missing";
+
+    case "sunday":
+      return "sunday";
+
+    case "no record":
+      return "no-record";
+
+    default:
+      return "default";
+  }
+}
+
+function getInitials(
+  value?: string | null
+) {
+  if (!value?.trim()) {
+    return "?";
+  }
+
+  return value
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) =>
+      word
+        .charAt(0)
+        .toUpperCase()
+    )
+    .join("");
 }
 
 export default ReportsPage;

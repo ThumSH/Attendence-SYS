@@ -1,0 +1,115 @@
+/* =========================================================
+   APP LAYOUT
+   ========================================================= */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+}
+
+/* =========================
+   NOT FOUND PAGE
+   ========================= */
+
+.app-not-found {
+  min-height: calc(100vh - 76px);
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  padding: 40px;
+}
+
+.app-not-found > span {
+  margin-bottom: 8px;
+
+  font-size: 52px;
+  font-weight: 800;
+
+  color: #2563eb;
+}
+
+.app-not-found h1 {
+  margin: 0 0 8px;
+
+  font-size: 24px;
+
+  color: #111827;
+}
+
+.app-not-found p {
+  margin: 0 0 20px;
+
+  color: #6b7280;
+
+  font-size: 12px;
+}
+
+.app-not-found a {
+  padding: 10px 14px;
+
+  border-radius: 9px;
+
+  background: #2563eb;
+
+  color: white;
+
+  text-decoration: none;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* =========================
+   MAIN CONTENT
+   ========================= */
+
+.main-content {
+  margin-left: 230px;
+
+  padding: 38px;
+
+  width: calc(100% - 230px);
+
+  min-width: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 30px;
+
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 0.13em;
+
+  color: #2563eb;
+}
+
+.page-header h1 {
+  font-size: 30px;
+
+  margin: 7px 0 5px;
+
+  color: #111827;
+}
+
+.page-header p {
+  margin: 0;
+
+  color: #6b7280;
+}

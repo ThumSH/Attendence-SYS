@@ -15,15 +15,26 @@ export interface Employee {
 
 export interface AttendanceRow {
   date: string;
+
   shiftIn: string | null;
+
   timeIn: string | null;
+
   shiftOut: string | null;
+
   timeOut: string | null;
+
   late: string | null;
+
   early: string | null;
+
   ot: string | null;
+
   abs: string | null;
-  status: string | null;
+
+  status: string;
+
+  legacyStatus: string | null;
 }
 
 export interface AttendanceReport {
@@ -47,4 +58,43 @@ export interface AttendanceReport {
     totalEarly: string;
     totalOT: string;
   };
+}
+
+/* ==========================================
+   ATTENDANCE ANNOTATIONS
+   ========================================== */
+
+export type AttendanceAnnotationField =
+  | "TimeIn"
+  | "TimeOut"
+  | "ShiftIn"
+  | "ShiftOut"
+  | "Late"
+  | "Early"
+  | "Ot";
+
+export interface AttendanceAnnotation {
+  id: number;
+
+  empNo: string;
+
+  attendanceDate: string;
+
+  fieldName: AttendanceAnnotationField;
+
+  reason: string;
+
+  createdAtUtc: string;
+
+  updatedAtUtc: string;
+}
+
+export interface SaveAttendanceAnnotationRequest {
+  empNo: string;
+
+  attendanceDate: string;
+
+  fieldName: AttendanceAnnotationField;
+
+  reason: string;
 }

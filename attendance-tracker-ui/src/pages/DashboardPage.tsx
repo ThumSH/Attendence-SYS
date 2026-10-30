@@ -1,6 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react-hooks/set-state-in-effect */
-
 import {
   useEffect,
   useMemo,
@@ -24,6 +21,17 @@ type DashboardStatus =
   | "Sunday"
   | "No Record";
 
+const STATUS_OPTIONS: DashboardStatus[] = [
+  "All",
+  "Present",
+  "Late",
+  "Absent",
+  "Missing Check-In",
+  "Missing Check-Out",
+  "Sunday",
+  "No Record",
+];
+
 function DashboardPage() {
   const [dashboard, setDashboard] =
     useState<DashboardData | null>(null);
@@ -43,18 +51,54 @@ function DashboardPage() {
   const [statusFilter, setStatusFilter] =
     useState<DashboardStatus>("All");
 
-  async function loadDashboard(date?: string) {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadInitialDashboard() {
+      try {
+        const data =
+          await getDashboard();
+
+        if (cancelled) {
+          return;
+        }
+
+        setDashboard(data);
+        setSelectedDate(data.date);
+      } catch (err) {
+        console.error(err);
+
+        if (!cancelled) {
+          setError(
+            "Unable to load dashboard information."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitialDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function loadDashboard(
+    date?: string
+  ) {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await getDashboard(date);
+      const data =
+        await getDashboard(date);
 
       setDashboard(data);
-
-      if (!selectedDate) {
-        setSelectedDate(data.date);
-      }
+      setSelectedDate(data.date);
     } catch (err) {
       console.error(err);
 
@@ -66,18 +110,17 @@ function DashboardPage() {
     }
   }
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
   async function handleDateChange(
     value: string
   ) {
     setSelectedDate(value);
 
-    if (value) {
-      await loadDashboard(value);
+    if (!value) {
+      await loadDashboard();
+      return;
     }
+
+    await loadDashboard(value);
   }
 
   async function handleRefresh() {
@@ -86,14 +129,16 @@ function DashboardPage() {
     );
   }
 
-  const filteredAttendance = useMemo(
-    () => {
+  const filteredAttendance =
+    useMemo(() => {
       if (!dashboard) {
         return [];
       }
 
       const normalizedSearch =
-        search.trim().toLowerCase();
+        search
+          .trim()
+          .toLowerCase();
 
       return dashboard.attendance.filter(
         (row) => {
@@ -125,652 +170,723 @@ function DashboardPage() {
           );
         }
       );
-    },
-    [
+    }, [
       dashboard,
       search,
       statusFilter,
-    ]
-  );
+    ]);
 
   if (loading && !dashboard) {
     return (
       <main className="main-content">
-        <div className="dashboard-loading-state">
-          <div className="dashboard-loader" />
+        <div className="dashboard-v2-loading">
+          <div className="dashboard-v2-spinner" />
 
-          <h2>Loading dashboard</h2>
+          <strong>
+            Loading attendance dashboard
+          </strong>
 
-          <p>
-            Retrieving attendance information...
-          </p>
+          <span>
+            Retrieving the latest attendance
+            information...
+          </span>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="main-content">
-      {/* =============================
-          PAGE HEADER
-         ============================= */}
+    <main className="main-content dashboard-v2">
+      <DashboardHeader
+        selectedDate={selectedDate}
+        loading={loading}
+        onDateChange={
+          handleDateChange
+        }
+        onRefresh={handleRefresh}
+      />
 
-      <header className="dashboard-page-header">
-        <div>
-          <span className="eyebrow">
-            Attendance Management
-          </span>
+      {error && (
+        <div className="dashboard-v2-error">
+          <div>
+            <strong>
+              Could not load dashboard
+            </strong>
 
-          <h1>Attendance Dashboard</h1>
-
-          <p>
-            Monitor daily attendance,
-            incomplete punches and employee
-            status.
-          </p>
-        </div>
-
-        <div className="dashboard-header-actions">
-          <div className="dashboard-date-field">
-            <label>
-              Attendance date
-            </label>
-
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) =>
-                handleDateChange(
-                  e.target.value
-                )
-              }
-            />
+            <span>
+              {error}
+            </span>
           </div>
 
           <button
             type="button"
-            className="dashboard-refresh-button"
-            onClick={handleRefresh}
-            disabled={loading}
+            onClick={() =>
+              void handleRefresh()
+            }
           >
-            {loading
-              ? "Refreshing..."
-              : "Refresh"}
+            Try again
           </button>
-        </div>
-      </header>
-
-      {error && (
-        <div className="error-message">
-          {error}
         </div>
       )}
 
       {dashboard && (
         <>
-          {/* =============================
-              DATE / STATUS BAR
-             ============================= */}
+          <OverviewBanner
+            dashboard={dashboard}
+            loading={loading}
+          />
 
-          <section className="dashboard-date-banner">
-            <div>
-              <span>
-                Attendance Overview
-              </span>
+          <SummaryCards
+            dashboard={dashboard}
+          />
 
-              <strong>
-                {formatDisplayDate(
-                  dashboard.date
-                )}
-              </strong>
-            </div>
-
-            <div className="dashboard-date-meta">
-              <span>
-                {
-                  dashboard.summary
-                    .attendanceRecords
-                }{" "}
-                attendance records
-              </span>
-
-              <span className="dashboard-live-indicator">
-                <i />
-                Database records
-              </span>
-            </div>
-          </section>
-
-          {/* =============================
-              SUMMARY CARDS
-             ============================= */}
-
-          <section className="dashboard-summary-grid improved">
-            <DashboardCard
-              label="Total Employees"
-              value={
-                dashboard.summary
-                  .totalEmployees
-              }
-              caption="Registered employees"
-              type="default"
-              icon="👥"
+          <section className="dashboard-v2-middle-grid">
+            <DepartmentOverview
+              dashboard={dashboard}
             />
 
-            <DashboardCard
-              label="Present"
-              value={
-                dashboard.summary.present
-              }
-              caption="Employees with check-in"
-              type="present"
-              icon="✓"
-            />
-
-            <DashboardCard
-              label="Absent"
-              value={
-                dashboard.summary.absent
-              }
-              caption="Marked as absent"
-              type="absent"
-              icon="×"
-            />
-
-            <DashboardCard
-              label="Late"
-              value={
-                dashboard.summary.late
-              }
-              caption="Late arrivals"
-              type="late"
-              icon="◷"
-            />
-
-            <DashboardCard
-              label="Missing Check-In"
-              value={
-                dashboard.summary
-                  .missingCheckIn
-              }
-              caption="Checkout without check-in"
-              type="missing"
-              icon="↓"
-            />
-
-            <DashboardCard
-              label="Missing Check-Out"
-              value={
-                dashboard.summary
-                  .missingCheckOut
-              }
-              caption="Check-in without checkout"
-              type="missing"
-              icon="↑"
+            <DaySummary
+              dashboard={dashboard}
             />
           </section>
 
-          {/* =============================
-              DEPARTMENTS / SNAPSHOT
-             ============================= */}
-
-          <section className="dashboard-layout improved-layout">
-            <div className="dashboard-panel department-panel">
-              <div className="dashboard-panel-heading">
-                <div>
-                  <span className="dashboard-section-label">
-                    Breakdown
-                  </span>
-
-                  <h2>
-                    Department Overview
-                  </h2>
-
-                  <p>
-                    Attendance performance by
-                    department.
-                  </p>
-                </div>
-
-                <span className="dashboard-record-count">
-                  {
-                    dashboard.departments
-                      .length
-                  }{" "}
-                  departments
-                </span>
-              </div>
-
-              <div className="department-list">
-                {dashboard.departments
-                  .length === 0 ? (
-                  <div className="dashboard-empty">
-                    No department data found.
-                  </div>
-                ) : (
-                  dashboard.departments.map(
-                    (
-                      department,
-                      index
-                    ) => {
-                      const attendanceRate =
-                        department.total > 0
-                          ? Math.round(
-                              (department.present /
-                                department.total) *
-                                100
-                            )
-                          : 0;
-
-                      return (
-                        <div
-                          className="department-row improved-department-row"
-                          key={
-                            department.code ??
-                            index
-                          }
-                        >
-                          <div className="department-main">
-                            <div className="department-avatar">
-                              {getInitials(
-                                department.name
-                              )}
-                            </div>
-
-                            <div>
-                              <strong>
-                                {department.name ||
-                                  "Unknown Department"}
-                              </strong>
-
-                              <span>
-                                Code:{" "}
-                                {department.code ||
-                                  "-"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="department-progress">
-                            <div className="department-progress-label">
-                              <span>
-                                Attendance
-                              </span>
-
-                              <strong>
-                                {
-                                  attendanceRate
-                                }
-                                %
-                              </strong>
-                            </div>
-
-                            <div className="department-progress-track">
-                              <div
-                                className="department-progress-fill"
-                                style={{
-                                  width: `${Math.min(
-                                    attendanceRate,
-                                    100
-                                  )}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="department-numbers improved">
-                            <DepartmentMetric
-                              label="Total"
-                              value={
-                                department.total
-                              }
-                            />
-
-                            <DepartmentMetric
-                              label="Present"
-                              value={
-                                department.present
-                              }
-                              type="present"
-                            />
-
-                            <DepartmentMetric
-                              label="Absent"
-                              value={
-                                department.absent
-                              }
-                              type="absent"
-                            />
-
-                            <DepartmentMetric
-                              label="Missing In"
-                              value={
-                                department.missingCheckIn
-                              }
-                              type="missing"
-                            />
-
-                            <DepartmentMetric
-                              label="Missing Out"
-                              value={
-                                department.missingCheckOut
-                              }
-                              type="missing"
-                            />
-                          </div>
-                        </div>
-                      );
-                    }
-                  )
-                )}
-              </div>
-            </div>
-
-            <div className="dashboard-panel snapshot-panel">
-              <div className="dashboard-panel-heading">
-                <div>
-                  <span className="dashboard-section-label">
-                    Snapshot
-                  </span>
-
-                  <h2>
-                    Day Summary
-                  </h2>
-
-                  <p>
-                    Current attendance picture.
-                  </p>
-                </div>
-              </div>
-
-              <div className="snapshot-stats improved-snapshot">
-                <SnapshotItem
-                  label="Attendance Records"
-                  value={
-                    dashboard.summary
-                      .attendanceRecords
-                  }
-                  icon="▤"
-                />
-
-                <SnapshotItem
-                  label="Present"
-                  value={
-                    dashboard.summary
-                      .present
-                  }
-                  icon="✓"
-                  type="present"
-                />
-
-                <SnapshotItem
-                  label="Absent"
-                  value={
-                    dashboard.summary
-                      .absent
-                  }
-                  icon="×"
-                  type="absent"
-                />
-
-                <SnapshotItem
-                  label="Late"
-                  value={
-                    dashboard.summary.late
-                  }
-                  icon="◷"
-                  type="late"
-                />
-
-                <SnapshotItem
-                  label="Missing Check-In"
-                  value={
-                    dashboard.summary
-                      .missingCheckIn
-                  }
-                  icon="↓"
-                  type="missing"
-                />
-
-                <SnapshotItem
-                  label="Missing Check-Out"
-                  value={
-                    dashboard.summary
-                      .missingCheckOut
-                  }
-                  icon="↑"
-                  type="missing"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* =============================
-              DAILY ATTENDANCE TABLE
-             ============================= */}
-
-          <section className="dashboard-panel attendance-overview-panel">
-            <div className="dashboard-panel-heading attendance-heading">
-              <div>
-                <span className="dashboard-section-label">
-                  Employees
-                </span>
-
-                <h2>Daily Attendance</h2>
-
-                <p>
-                  Detailed attendance for{" "}
-                  {formatDisplayDate(
-                    dashboard.date
-                  )}
-                </p>
-              </div>
-
-              <span className="dashboard-record-count">
-                {
-                  filteredAttendance.length
-                }{" "}
-                of{" "}
-                {
-                  dashboard.attendance
-                    .length
-                }{" "}
-                records
-              </span>
-            </div>
-
-            <div className="dashboard-table-toolbar">
-              <div className="dashboard-search-box">
-                <span>⌕</span>
-
-                <input
-                  type="text"
-                  placeholder="Search employee, ID or department..."
-                  value={search}
-                  onChange={(e) =>
-                    setSearch(
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <div className="dashboard-status-filter">
-                <label>Status</label>
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) =>
-                    setStatusFilter(
-                      e.target
-                        .value as DashboardStatus
-                    )
-                  }
-                >
-                  <option value="All">
-                    All Statuses
-                  </option>
-
-                  <option value="Present">
-                    Present
-                  </option>
-
-                  <option value="Late">
-                    Late
-                  </option>
-
-                  <option value="Absent">
-                    Absent
-                  </option>
-
-                  <option value="Missing Check-In">
-                    Missing Check-In
-                  </option>
-
-                  <option value="Missing Check-Out">
-                    Missing Check-Out
-                  </option>
-
-                  <option value="Sunday">
-                    Sunday
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <DashboardAttendanceTable
-              rows={filteredAttendance}
-            />
-          </section>
+          <DailyAttendance
+            dashboard={dashboard}
+            rows={filteredAttendance}
+            search={search}
+            statusFilter={statusFilter}
+            onSearchChange={setSearch}
+            onStatusChange={
+              setStatusFilter
+            }
+          />
         </>
       )}
     </main>
   );
 }
 
-/* =====================================================
-   SUMMARY CARD
-   ===================================================== */
+function DashboardHeader({
+  selectedDate,
+  loading,
+  onDateChange,
+  onRefresh,
+}: {
+  selectedDate: string;
+  loading: boolean;
 
-interface DashboardCardProps {
-  label: string;
-  value: number;
-  caption: string;
-  icon: string;
+  onDateChange:
+    (value: string) =>
+      Promise<void>;
 
-  type:
-    | "default"
-    | "present"
-    | "absent"
-    | "late"
-    | "missing";
+  onRefresh:
+    () => Promise<void>;
+}) {
+  return (
+    <header className="dashboard-v2-header">
+      <div className="dashboard-v2-title">
+        <span className="dashboard-v2-eyebrow">
+          Attendance Management
+        </span>
+
+        <h1>
+          Dashboard
+        </h1>
+
+        <p>
+          Daily attendance overview,
+          employee activity and exceptions.
+        </p>
+      </div>
+
+      <div className="dashboard-v2-header-actions">
+        <label className="dashboard-v2-date-control">
+          <span>
+            Attendance Date
+          </span>
+
+          <input
+            type="date"
+            value={selectedDate}
+            disabled={loading}
+            onChange={(event) =>
+              void onDateChange(
+                event.target.value
+              )
+            }
+          />
+        </label>
+
+        <button
+          type="button"
+          className="dashboard-v2-refresh"
+          disabled={loading}
+          onClick={() =>
+            void onRefresh()
+          }
+        >
+          <span className="dashboard-v2-refresh-icon">
+            ↻
+          </span>
+
+          {loading
+            ? "Refreshing..."
+            : "Refresh"}
+        </button>
+      </div>
+    </header>
+  );
 }
 
-function DashboardCard({
-  label,
-  value,
-  caption,
-  icon,
-  type,
-}: DashboardCardProps) {
+function OverviewBanner({
+  dashboard,
+  loading,
+}: {
+  dashboard: DashboardData;
+  loading: boolean;
+}) {
   return (
-    <div
-      className={`dashboard-stat-card dashboard-stat-${type}`}
-    >
-      <div className="dashboard-card-top">
-        <div
-          className={`dashboard-card-icon ${type}`}
-        >
-          {icon}
+    <section className="dashboard-v2-overview">
+      <div>
+        <span className="dashboard-v2-overview-label">
+          Attendance Overview
+        </span>
+
+        <strong>
+          {formatDisplayDate(
+            dashboard.date
+          )}
+        </strong>
+
+        <small>
+          Daily processed attendance
+          information
+        </small>
+      </div>
+
+      <div className="dashboard-v2-overview-meta">
+        <div>
+          <span>
+            Records
+          </span>
+
+          <strong>
+            {
+              dashboard.summary
+                .attendanceRecords
+            }
+          </strong>
         </div>
 
-        <span className="dashboard-card-label">
+        <div className="dashboard-v2-source-status">
+          <i />
+
+          <span>
+            {loading
+              ? "Updating"
+              : "Database records"}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SummaryCards({
+  dashboard,
+}: {
+  dashboard: DashboardData;
+}) {
+  return (
+    <section className="dashboard-v2-summary-grid">
+      <SummaryCard
+        label="Employees"
+        value={
+          dashboard.summary
+            .totalEmployees
+        }
+        description="Registered employees"
+        icon="👥"
+        type="employees"
+      />
+
+      <SummaryCard
+        label="Present"
+        value={
+          dashboard.summary.present
+        }
+        description="Employees checked in"
+        icon="✓"
+        type="present"
+      />
+
+      <SummaryCard
+        label="Late"
+        value={
+          dashboard.summary.late
+        }
+        description="Late arrivals"
+        icon="◷"
+        type="late"
+      />
+
+      <SummaryCard
+        label="Absent"
+        value={
+          dashboard.summary.absent
+        }
+        description="Marked absent"
+        icon="×"
+        type="absent"
+      />
+
+      <SummaryCard
+        label="Missing Check-In"
+        value={
+          dashboard.summary
+            .missingCheckIn
+        }
+        description="Checkout without check-in"
+        icon="↓"
+        type="missing"
+      />
+
+      <SummaryCard
+        label="Missing Check-Out"
+        value={
+          dashboard.summary
+            .missingCheckOut
+        }
+        description="Check-in without checkout"
+        icon="↑"
+        type="missing"
+      />
+    </section>
+  );
+}
+
+type SummaryType =
+  | "employees"
+  | "present"
+  | "late"
+  | "absent"
+  | "missing";
+
+function SummaryCard({
+  label,
+  value,
+  description,
+  icon,
+  type,
+}: {
+  label: string;
+  value: number;
+  description: string;
+  icon: string;
+  type: SummaryType;
+}) {
+  return (
+    <article
+      className={`dashboard-v2-stat-card ${type}`}
+    >
+      <div className="dashboard-v2-stat-top">
+        <span
+          className={`dashboard-v2-stat-icon ${type}`}
+        >
+          {icon}
+        </span>
+
+        <span className="dashboard-v2-stat-label">
           {label}
         </span>
       </div>
 
-      <strong className="dashboard-card-value">
+      <strong className="dashboard-v2-stat-value">
         {value}
       </strong>
 
-      <small>{caption}</small>
-    </div>
+      <span className="dashboard-v2-stat-description">
+        {description}
+      </span>
+    </article>
   );
 }
 
-/* =====================================================
-   SNAPSHOT
-   ===================================================== */
+function DepartmentOverview({
+  dashboard,
+}: {
+  dashboard: DashboardData;
+}) {
+  return (
+    <section className="dashboard-v2-panel dashboard-v2-departments">
+      <PanelHeading
+        eyebrow="Breakdown"
+        title="Department Overview"
+        description="Attendance status by department."
+        trailing={`${dashboard.departments.length} departments`}
+      />
 
-function SnapshotItem({
+      <div className="dashboard-v2-department-list">
+        {dashboard.departments.length ===
+        0 ? (
+          <EmptyState
+            title="No departments"
+            description="No department attendance information was found for this date."
+          />
+        ) : (
+          dashboard.departments.map(
+            (
+              department,
+              index
+            ) => {
+              const attendanceRate =
+                department.total > 0
+                  ? Math.round(
+                      (
+                        department.present /
+                        department.total
+                      ) * 100
+                    )
+                  : 0;
+
+              return (
+                <article
+                  className="dashboard-v2-department-row"
+                  key={
+                    department.code ??
+                    index
+                  }
+                >
+                  <div className="dashboard-v2-department-identity">
+                    <div className="dashboard-v2-department-avatar">
+                      {getInitials(
+                        department.name
+                      )}
+                    </div>
+
+                    <div>
+                      <strong>
+                        {department.name ||
+                          "Unknown Department"}
+                      </strong>
+
+                      <span>
+                        Code{" "}
+                        {department.code ||
+                          "-"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v2-department-rate">
+                    <div>
+                      <span>
+                        Attendance
+                      </span>
+
+                      <strong>
+                        {attendanceRate}%
+                      </strong>
+                    </div>
+
+                    <div className="dashboard-v2-progress">
+                      <span
+                        style={{
+                          width: `${Math.min(
+                            attendanceRate,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v2-department-metrics">
+                    <DepartmentMetric
+                      label="Total"
+                      value={
+                        department.total
+                      }
+                    />
+
+                    <DepartmentMetric
+                      label="Present"
+                      value={
+                        department.present
+                      }
+                      type="present"
+                    />
+
+                    <DepartmentMetric
+                      label="Absent"
+                      value={
+                        department.absent
+                      }
+                      type="absent"
+                    />
+
+                    <DepartmentMetric
+                      label="Missing In"
+                      value={
+                        department
+                          .missingCheckIn
+                      }
+                      type="missing"
+                    />
+
+                    <DepartmentMetric
+                      label="Missing Out"
+                      value={
+                        department
+                          .missingCheckOut
+                      }
+                      type="missing"
+                    />
+                  </div>
+                </article>
+              );
+            }
+          )
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DepartmentMetric({
   label,
   value,
-  icon,
   type = "default",
 }: {
   label: string;
   value: number;
-  icon: string;
 
   type?:
     | "default"
     | "present"
     | "absent"
-    | "late"
     | "missing";
 }) {
   return (
     <div
-      className={`snapshot-item snapshot-${type}`}
+      className={`dashboard-v2-department-metric ${type}`}
     >
-      <div className="snapshot-icon">
-        {icon}
-      </div>
+      <span>
+        {label}
+      </span>
 
-      <div>
-        <span>{label}</span>
-
-        <strong>{value}</strong>
-      </div>
+      <strong>
+        {value}
+      </strong>
     </div>
   );
 }
 
-/* =====================================================
-   DEPARTMENT METRIC
-   ===================================================== */
+function DaySummary({
+  dashboard,
+}: {
+  dashboard: DashboardData;
+}) {
+  return (
+    <aside className="dashboard-v2-panel dashboard-v2-day-summary">
+      <PanelHeading
+        eyebrow="Snapshot"
+        title="Day Summary"
+        description="Quick view of the selected date."
+      />
 
-function DepartmentMetric({
+      <div className="dashboard-v2-record-total">
+        <span>
+          Attendance Records
+        </span>
+
+        <strong>
+          {
+            dashboard.summary
+              .attendanceRecords
+          }
+        </strong>
+
+        <small>
+          {formatShortDate(
+            dashboard.date
+          )}
+        </small>
+      </div>
+
+      <div className="dashboard-v2-summary-list">
+        <SummaryRow
+          label="Present"
+          value={
+            dashboard.summary.present
+          }
+          icon="✓"
+          type="present"
+        />
+
+        <SummaryRow
+          label="Late"
+          value={
+            dashboard.summary.late
+          }
+          icon="◷"
+          type="late"
+        />
+
+        <SummaryRow
+          label="Absent"
+          value={
+            dashboard.summary.absent
+          }
+          icon="×"
+          type="absent"
+        />
+
+        <SummaryRow
+          label="Missing Check-In"
+          value={
+            dashboard.summary
+              .missingCheckIn
+          }
+          icon="↓"
+          type="missing"
+        />
+
+        <SummaryRow
+          label="Missing Check-Out"
+          value={
+            dashboard.summary
+              .missingCheckOut
+          }
+          icon="↑"
+          type="missing"
+        />
+      </div>
+    </aside>
+  );
+}
+
+function SummaryRow({
   label,
   value,
+  icon,
   type,
 }: {
   label: string;
   value: number;
+  icon: string;
 
-  type?:
+  type:
     | "present"
+    | "late"
     | "absent"
     | "missing";
 }) {
   return (
-    <div
-      className={
-        type
-          ? `department-metric ${type}`
-          : "department-metric"
-      }
-    >
-      <span>{label}</span>
+    <div className="dashboard-v2-summary-row">
+      <div>
+        <span
+          className={`dashboard-v2-summary-row-icon ${type}`}
+        >
+          {icon}
+        </span>
 
-      <strong>{value}</strong>
+        <span>
+          {label}
+        </span>
+      </div>
+
+      <strong>
+        {value}
+      </strong>
     </div>
   );
 }
 
-/* =====================================================
-   TABLE
-   ===================================================== */
+function DailyAttendance({
+  dashboard,
+  rows,
+  search,
+  statusFilter,
+  onSearchChange,
+  onStatusChange,
+}: {
+  dashboard: DashboardData;
+  rows: DashboardAttendanceRow[];
+  search: string;
+  statusFilter: DashboardStatus;
+
+  onSearchChange:
+    (value: string) => void;
+
+  onStatusChange:
+    (value: DashboardStatus) => void;
+}) {
+  return (
+    <section className="dashboard-v2-panel dashboard-v2-attendance-panel">
+      <PanelHeading
+        eyebrow="Employees"
+        title="Daily Attendance"
+        description={`Attendance information for ${formatDisplayDate(
+          dashboard.date
+        )}`}
+        trailing={`${rows.length} of ${dashboard.attendance.length} records`}
+      />
+
+      <div className="dashboard-v2-table-toolbar">
+        <label className="dashboard-v2-search">
+          <span>
+            ⌕
+          </span>
+
+          <input
+            type="search"
+            value={search}
+            placeholder="Search employee, ID or department..."
+            onChange={(event) =>
+              onSearchChange(
+                event.target.value
+              )
+            }
+          />
+        </label>
+
+        <label className="dashboard-v2-status-select">
+          <span>
+            Status
+          </span>
+
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              onStatusChange(
+                event.target
+                  .value as DashboardStatus
+              )
+            }
+          >
+            {STATUS_OPTIONS.map(
+              (status) => (
+                <option
+                  value={status}
+                  key={status}
+                >
+                  {status === "All"
+                    ? "All Statuses"
+                    : status}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+      </div>
+
+      <DashboardAttendanceTable
+        rows={rows}
+      />
+    </section>
+  );
+}
 
 function DashboardAttendanceTable({
   rows,
@@ -778,20 +894,49 @@ function DashboardAttendanceTable({
   rows: DashboardAttendanceRow[];
 }) {
   return (
-    <div className="table-wrapper dashboard-table-wrapper">
-      <table className="attendance-table dashboard-table">
+    <div className="dashboard-v2-table-container">
+      <table className="dashboard-v2-table">
         <thead>
           <tr>
-            <th>Employee</th>
-            <th>Department</th>
-            <th>Shift In</th>
-            <th>Time In</th>
-            <th>Shift Out</th>
-            <th>Time Out</th>
-            <th>Late</th>
-            <th>Early</th>
-            <th>OT</th>
-            <th>Status</th>
+            <th>
+              Employee
+            </th>
+
+            <th>
+              Department
+            </th>
+
+            <th>
+              Shift In
+            </th>
+
+            <th>
+              Time In
+            </th>
+
+            <th>
+              Shift Out
+            </th>
+
+            <th>
+              Time Out
+            </th>
+
+            <th>
+              Late
+            </th>
+
+            <th>
+              Early
+            </th>
+
+            <th>
+              OT
+            </th>
+
+            <th>
+              Status
+            </th>
           </tr>
         </thead>
 
@@ -800,18 +945,12 @@ function DashboardAttendanceTable({
             <tr>
               <td
                 colSpan={10}
-                className="empty-row"
+                className="dashboard-v2-table-empty-cell"
               >
-                <div className="dashboard-no-results">
-                  <strong>
-                    No attendance records
-                  </strong>
-
-                  <span>
-                    Try changing the search or
-                    status filter.
-                  </span>
-                </div>
+                <EmptyState
+                  title="No attendance records"
+                  description="Try changing the search text or status filter."
+                />
               </td>
             </tr>
           ) : (
@@ -824,8 +963,8 @@ function DashboardAttendanceTable({
                   key={`${row.empNo}-${index}`}
                 >
                   <td>
-                    <div className="dashboard-employee-cell improved">
-                      <div className="employee-avatar-small">
+                    <div className="dashboard-v2-employee">
+                      <div className="dashboard-v2-employee-avatar">
                         {getInitials(
                           row.name
                         )}
@@ -834,7 +973,7 @@ function DashboardAttendanceTable({
                       <div>
                         <strong>
                           {row.name ||
-                            "Unknown"}
+                            "Unknown Employee"}
                         </strong>
 
                         <span>
@@ -846,7 +985,7 @@ function DashboardAttendanceTable({
                   </td>
 
                   <td>
-                    <span className="department-pill">
+                    <span className="dashboard-v2-department-pill">
                       {row.department ||
                         "-"}
                     </span>
@@ -859,7 +998,7 @@ function DashboardAttendanceTable({
                   </td>
 
                   <td>
-                    {renderTimeIn(
+                    {renderAttendanceTime(
                       row.timeIn
                     )}
                   </td>
@@ -914,56 +1053,60 @@ function DashboardAttendanceTable({
   );
 }
 
-/* =====================================================
-   STATUS
-   ===================================================== */
+function PanelHeading({
+  eyebrow,
+  title,
+  description,
+  trailing,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  trailing?: string;
+}) {
+  return (
+    <div className="dashboard-v2-panel-heading">
+      <div>
+        <span className="dashboard-v2-section-label">
+          {eyebrow}
+        </span>
+
+        <h2>
+          {title}
+        </h2>
+
+        <p>
+          {description}
+        </p>
+      </div>
+
+      {trailing && (
+        <span className="dashboard-v2-count">
+          {trailing}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function StatusBadge({
   status,
 }: {
   status: string;
 }) {
-  const normalized =
-    status.toLowerCase();
-
-  let className =
-    "dashboard-status";
-
-  if (normalized === "present") {
-    className += " present";
-  } else if (
-    normalized === "absent"
-  ) {
-    className += " absent";
-  } else if (
-    normalized === "late"
-  ) {
-    className += " late";
-  } else if (
-    normalized ===
-      "missing check-in" ||
-    normalized ===
-      "missing check-out"
-  ) {
-    className += " missing";
-  } else if (
-    normalized === "sunday"
-  ) {
-    className += " sunday";
-  }
+  const className =
+    getStatusClass(status);
 
   return (
-    <span className={className}>
-      <span className="status-dot" />
+    <span
+      className={`dashboard-v2-status ${className}`}
+    >
+      <i />
 
       {status}
     </span>
   );
 }
-
-/* =====================================================
-   METRIC VALUE
-   ===================================================== */
 
 function MetricValue({
   value,
@@ -976,13 +1119,9 @@ function MetricValue({
     | "early"
     | "ot";
 }) {
-  if (
-    !value ||
-    value === "0" ||
-    value === "00:00"
-  ) {
+  if (isEmptyMetric(value)) {
     return (
-      <span className="metric-empty">
+      <span className="dashboard-v2-empty-value">
         —
       </span>
     );
@@ -990,26 +1129,42 @@ function MetricValue({
 
   return (
     <span
-      className={`dashboard-metric ${type}`}
+      className={`dashboard-v2-metric ${type}`}
     >
       {value}
     </span>
   );
 }
 
-/* =====================================================
-   HELPERS
-   ===================================================== */
+function EmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="dashboard-v2-empty">
+      <strong>
+        {title}
+      </strong>
+
+      <span>
+        {description}
+      </span>
+    </div>
+  );
+}
 
 function displayTime(
   value: string | null
 ) {
   if (
     !value ||
-    value.trim() === ""
+    !value.trim()
   ) {
     return (
-      <span className="metric-empty">
+      <span className="dashboard-v2-empty-value">
         —
       </span>
     );
@@ -1018,36 +1173,38 @@ function displayTime(
   return value;
 }
 
-function renderTimeIn(
+function renderAttendanceTime(
   value: string | null
 ) {
   if (
     !value ||
-    value.trim() === ""
+    !value.trim()
   ) {
     return (
-      <span className="missing-time">
+      <span className="dashboard-v2-time-warning">
         Missing
       </span>
     );
   }
 
+  const normalized =
+    value.trim().toLowerCase();
+
   if (
-    value.toUpperCase() === "AB"
+    normalized === "ab"
   ) {
     return (
-      <span className="time-absent">
+      <span className="dashboard-v2-time-absent">
         AB
       </span>
     );
   }
 
   if (
-    value.toLowerCase() ===
-    "sunday"
+    normalized === "sunday"
   ) {
     return (
-      <span className="time-sunday">
+      <span className="dashboard-v2-time-sunday">
         Sunday
       </span>
     );
@@ -1056,11 +1213,64 @@ function renderTimeIn(
   return value;
 }
 
+function isEmptyMetric(
+  value: string | null
+) {
+  if (!value) {
+    return true;
+  }
+
+  const normalized =
+    value.trim();
+
+  return (
+    normalized === "" ||
+    normalized === "0" ||
+    normalized === "00:00" ||
+    normalized === "0:00"
+  );
+}
+
+function getStatusClass(
+  status: string
+) {
+  const normalized =
+    status
+      .trim()
+      .toLowerCase();
+
+  switch (normalized) {
+    case "present":
+      return "present";
+
+    case "late":
+      return "late";
+
+    case "absent":
+      return "absent";
+
+    case "missing check-in":
+    case "missing check-out":
+      return "missing";
+
+    case "sunday":
+      return "sunday";
+
+    case "no record":
+      return "no-record";
+
+    default:
+      return "default";
+  }
+}
+
 function formatDisplayDate(
   date: string
 ) {
   const parsedDate =
-    new Date(`${date}T00:00:00`);
+    new Date(
+      `${date}T00:00:00`
+    );
 
   return parsedDate.toLocaleDateString(
     "en-GB",
@@ -1073,10 +1283,28 @@ function formatDisplayDate(
   );
 }
 
+function formatShortDate(
+  date: string
+) {
+  const parsedDate =
+    new Date(
+      `${date}T00:00:00`
+    );
+
+  return parsedDate.toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  );
+}
+
 function getInitials(
   value?: string | null
 ) {
-  if (!value) {
+  if (!value?.trim()) {
     return "?";
   }
 
@@ -1085,7 +1313,9 @@ function getInitials(
     .split(/\s+/)
     .slice(0, 2)
     .map((word) =>
-      word.charAt(0).toUpperCase()
+      word
+        .charAt(0)
+        .toUpperCase()
     )
     .join("");
 }

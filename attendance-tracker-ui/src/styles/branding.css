@@ -1,0 +1,80 @@
+/* =========================================================
+   SHARED COMPANY BRANDING
+   ========================================================= */
+
+.company-brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.company-brand__logo {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.company-brand__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.company-brand__copy strong,
+.company-brand__copy span {
+  display: block;
+}
+
+.company-brand--login {
+  gap: 14px;
+}
+
+.company-brand--login .company-brand__logo {
+  width: 58px;
+  height: 58px;
+  padding: 5px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 10px 24px
+    rgba(15, 23, 42, 0.18);
+}
+
+.company-brand--login .company-brand__copy strong {
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.company-brand--login .company-brand__copy span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.company-brand--print {
+  gap: 10px;
+}
+
+.company-brand--print .company-brand__logo {
+  width: 44px;
+  height: 44px;
+}
+
+.company-brand--print .company-brand__copy strong {
+  color: #000000;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.company-brand--print .company-brand__copy span {
+  margin-top: 2px;
+  color: #444444;
+  font-size: 7px;
+  font-weight: 600;
+}

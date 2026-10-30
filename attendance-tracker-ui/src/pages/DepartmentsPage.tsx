@@ -65,10 +65,6 @@ function DepartmentsPage() {
       null
     );
 
-  /* =========================
-     LOAD DATA
-     ========================= */
-
   useEffect(() => {
     let cancelled = false;
 
@@ -112,16 +108,12 @@ function DepartmentsPage() {
       }
     }
 
-    loadData();
+    void loadData();
 
     return () => {
       cancelled = true;
     };
   }, []);
-
-  /* =========================
-     DEPARTMENT SUMMARIES
-     ========================= */
 
   const departmentSummaries =
     useMemo<
@@ -138,18 +130,11 @@ function DepartmentsPage() {
 
           const attendanceEnabled =
             departmentEmployees.filter(
-              (employee) => {
-                const value =
+              (employee) =>
+                isAttendanceEnabled(
                   employee
                     .attendanceEnabled
-                    ?.trim()
-                    .toUpperCase();
-
-                return (
-                  !value ||
-                  value === "Y"
-                );
-              }
+                )
             ).length;
 
           const disabledCount =
@@ -197,10 +182,6 @@ function DepartmentsPage() {
       employees,
     ]);
 
-  /* =========================
-     SEARCH
-     ========================= */
-
   const filteredDepartments =
     useMemo(() => {
       const query =
@@ -232,10 +213,6 @@ function DepartmentsPage() {
       search,
       departmentSummaries,
     ]);
-
-  /* =========================
-     OVERALL COUNTS
-     ========================= */
 
   const totalEmployees =
     useMemo(
@@ -271,9 +248,36 @@ function DepartmentsPage() {
       ]
     );
 
-  /* =========================
-     NAVIGATION
-     ========================= */
+  const disabledEmployees =
+    useMemo(
+      () =>
+        filteredDepartments.reduce(
+          (
+            total,
+            department
+          ) =>
+            total +
+            department.disabledCount,
+          0
+        ),
+      [
+        filteredDepartments,
+      ]
+    );
+
+  const uniqueShifts =
+    useMemo(
+      () =>
+        new Set(
+          filteredDepartments.flatMap(
+            (department) =>
+              department.shifts
+          )
+        ).size,
+      [
+        filteredDepartments,
+      ]
+    );
 
   function handleViewEmployees(
     departmentCode: string
@@ -285,15 +289,15 @@ function DepartmentsPage() {
     );
   }
 
-  return (
-    <main className="main-content">
-      {/* =====================
-          HEADER
-          ===================== */}
+  function clearSearch() {
+    setSearch("");
+  }
 
-      <header className="page-header departments-page-header">
+  return (
+    <main className="main-content departments-v2">
+      <header className="departments-v2-header">
         <div>
-          <span className="eyebrow">
+          <span className="departments-v2-eyebrow">
             Attendance Management
           </span>
 
@@ -302,180 +306,245 @@ function DepartmentsPage() {
           </h1>
 
           <p>
-            Browse departments and
-            review employee distribution
-            across the organization.
+            Review department structure,
+            employee distribution and
+            attendance coverage.
           </p>
+        </div>
+
+        <div className="departments-v2-header-meta">
+          <span>
+            Organization
+          </span>
+
+          <strong>
+            {
+              departments.length
+            }
+          </strong>
+
+          <small>
+            departments loaded
+          </small>
         </div>
       </header>
 
-      {/* =====================
-          SUMMARY
-          ===================== */}
-
-      <section className="departments-summary-grid">
+      <section className="departments-v2-summary-grid">
         <DepartmentSummaryCard
           label="Departments"
           value={
             filteredDepartments.length
           }
           caption="Matching current search"
+          icon="▦"
+          type="departments"
         />
 
         <DepartmentSummaryCard
           label="Employees"
-          value={
-            totalEmployees
-          }
-          caption="Employees in listed departments"
+          value={totalEmployees}
+          caption="Across listed departments"
+          icon="👥"
           type="employees"
         />
 
         <DepartmentSummaryCard
           label="Attendance Enabled"
-          value={
-            enabledEmployees
-          }
-          caption="Employees tracked for attendance"
+          value={enabledEmployees}
+          caption={`${disabledEmployees} disabled`}
+          icon="✓"
           type="enabled"
+        />
+
+        <DepartmentSummaryCard
+          label="Shift Groups"
+          value={uniqueShifts}
+          caption="Unique shifts in results"
+          icon="◷"
+          type="shifts"
         />
       </section>
 
-      {/* =====================
-          SEARCH
-          ===================== */}
-
-      <section className="departments-filter-card">
-        <div className="field">
-          <label>
-            Search Departments
-          </label>
-
-          <div className="employees-search-box">
+      <section className="departments-v2-filter-panel">
+        <div className="departments-v2-filter-heading">
+          <div>
             <span>
-              ⌕
+              Department Directory
             </span>
 
+            <strong>
+              Find a department
+            </strong>
+          </div>
+
+          <button
+            type="button"
+            className="departments-v2-clear-button"
+            onClick={
+              clearSearch
+            }
+            disabled={!search}
+          >
+            Clear Search
+          </button>
+        </div>
+
+        <label className="departments-v2-search">
+          <span>
+            Search Departments
+          </span>
+
+          <div>
+            <i>
+              ⌕
+            </i>
+
             <input
-              type="text"
+              type="search"
               placeholder="Search department name, code or shift..."
-              value={
-                search
-              }
-              onChange={(e) =>
+              value={search}
+              onChange={(event) =>
                 setSearch(
-                  e.target.value
+                  event.target.value
                 )
               }
             />
+
+            {search && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={
+                  clearSearch
+                }
+              >
+                ×
+              </button>
+            )}
           </div>
-        </div>
+        </label>
       </section>
 
-      {/* =====================
-          ERROR
-          ===================== */}
-
       {error && (
-        <div className="error-message">
-          {error}
+        <div className="departments-v2-error">
+          <strong>
+            Unable to load departments
+          </strong>
+
+          <span>
+            {error}
+          </span>
         </div>
       )}
 
-      {/* =====================
-          LOADING
-          ===================== */}
-
       {loading ? (
-        <section className="departments-loading">
-          <div className="dashboard-loader" />
+        <section className="departments-v2-loading">
+          <div className="departments-v2-spinner" />
 
           <strong>
-            Loading departments...
+            Loading departments
           </strong>
+
+          <span>
+            Retrieving department and
+            employee information...
+          </span>
         </section>
       ) : (
-        /* =====================
-           GRID
-           ===================== */
-
-        <section className="departments-grid">
-          {filteredDepartments.length ===
-          0 ? (
-            <div className="departments-empty">
-              <h2>
-                No departments found
-              </h2>
-
-              <p>
-                Try changing your
-                search term.
-              </p>
-            </div>
-          ) : (
-            filteredDepartments.map(
-              (department) => (
-                <DepartmentCard
-                  key={
-                    department.code
-                  }
-                  department={
-                    department
-                  }
-                  onViewEmployees={
-                    handleViewEmployees
-                  }
-                />
-              )
-            )
-          )}
-        </section>
+        <DepartmentDirectory
+          departments={
+            filteredDepartments
+          }
+          onViewEmployees={
+            handleViewEmployees
+          }
+        />
       )}
     </main>
   );
 }
 
-/* =========================
-   SUMMARY CARD
-   ========================= */
-
-function DepartmentSummaryCard({
-  label,
-  value,
-  caption,
-  type = "default",
+function DepartmentDirectory({
+  departments,
+  onViewEmployees,
 }: {
-  label: string;
-  value: number;
-  caption: string;
+  departments:
+    DepartmentSummary[];
 
-  type?:
-    | "default"
-    | "employees"
-    | "enabled";
+  onViewEmployees:
+    (
+      departmentCode: string
+    ) => void;
 }) {
   return (
-    <div
-      className={`department-summary-card department-summary-${type}`}
-    >
-      <span>
-        {label}
-      </span>
+    <section className="departments-v2-directory">
+      <div className="departments-v2-directory-heading">
+        <div>
+          <span>
+            Department Overview
+          </span>
 
-      <strong>
-        {value}
-      </strong>
+          <h2>
+            Department List
+          </h2>
 
-      <small>
-        {caption}
-      </small>
-    </div>
+          <p>
+            Employee distribution and
+            attendance settings by
+            department.
+          </p>
+        </div>
+
+        <div className="departments-v2-directory-count">
+          <strong>
+            {
+              departments.length
+            }
+          </strong>
+
+          <span>
+            departments
+          </span>
+        </div>
+      </div>
+
+      {departments.length ===
+      0 ? (
+        <div className="departments-v2-empty">
+          <div>
+            ⌕
+          </div>
+
+          <strong>
+            No departments found
+          </strong>
+
+          <span>
+            Try changing the search term.
+          </span>
+        </div>
+      ) : (
+        <div className="departments-v2-grid">
+          {departments.map(
+            (department) => (
+              <DepartmentCard
+                key={
+                  department.code
+                }
+                department={
+                  department
+                }
+                onViewEmployees={
+                  onViewEmployees
+                }
+              />
+            )
+          )}
+        </div>
+      )}
+    </section>
   );
 }
-
-/* =========================
-   DEPARTMENT CARD
-   ========================= */
 
 function DepartmentCard({
   department,
@@ -490,43 +559,39 @@ function DepartmentCard({
     ) => void;
 }) {
   const enabledPercentage =
-    department.employeeCount >
-    0
+    department.employeeCount > 0
       ? Math.round(
           (
             department.attendanceEnabled /
             department.employeeCount
-          ) *
-            100
+          ) * 100
         )
       : 0;
 
   return (
-    <article className="department-card">
-      <div className="department-card-header">
-        <div className="department-card-icon">
+    <article className="departments-v2-card">
+      <div className="departments-v2-card-header">
+        <div className="departments-v2-card-icon">
           {getDepartmentInitials(
             department.name
           )}
         </div>
 
-        <div className="department-card-title">
+        <div className="departments-v2-card-title">
           <strong>
-            {
-              department.name
-            }
+            {department.name ||
+              "Unknown Department"}
           </strong>
 
           <span>
             Code{" "}
-            {
-              department.code
-            }
+            {department.code ||
+              "-"}
           </span>
         </div>
       </div>
 
-      <div className="department-card-count">
+      <div className="departments-v2-card-count">
         <strong>
           {
             department.employeeCount
@@ -538,10 +603,10 @@ function DepartmentCard({
         </span>
       </div>
 
-      <div className="department-progress-section">
-        <div className="department-progress-heading">
+      <div className="departments-v2-coverage">
+        <div>
           <span>
-            Attendance Enabled
+            Attendance Coverage
           </span>
 
           <strong>
@@ -552,9 +617,8 @@ function DepartmentCard({
           </strong>
         </div>
 
-        <div className="department-progress-track">
-          <div
-            className="department-progress-bar"
+        <div className="departments-v2-progress">
+          <span
             style={{
               width: `${Math.min(
                 enabledPercentage,
@@ -565,63 +629,49 @@ function DepartmentCard({
         </div>
       </div>
 
-      <div className="department-card-stats">
-        <div>
-          <span>
-            Enabled
-          </span>
+      <div className="departments-v2-card-stats">
+        <DepartmentMetric
+          label="Enabled"
+          value={
+            department.attendanceEnabled
+          }
+          type="enabled"
+        />
 
-          <strong>
-            {
-              department.attendanceEnabled
-            }
-          </strong>
-        </div>
+        <DepartmentMetric
+          label="Disabled"
+          value={
+            department.disabledCount
+          }
+          type="disabled"
+        />
 
-        <div>
-          <span>
-            Disabled
-          </span>
-
-          <strong>
-            {
-              department.disabledCount
-            }
-          </strong>
-        </div>
-
-        <div>
-          <span>
-            Shifts
-          </span>
-
-          <strong>
-            {
-              department.shifts.length
-            }
-          </strong>
-        </div>
+        <DepartmentMetric
+          label="Shifts"
+          value={
+            department.shifts.length
+          }
+          type="shifts"
+        />
       </div>
 
-      <div className="department-shifts">
-        <span className="department-shifts-label">
+      <div className="departments-v2-shifts">
+        <span>
           Active Shifts
         </span>
 
-        <div className="department-shift-list">
+        <div>
           {department.shifts.length ===
           0 ? (
-            <span className="department-no-shifts">
+            <small>
               No shift assigned
-            </span>
+            </small>
           ) : (
             department.shifts.map(
               (shift) => (
                 <span
-                  className="department-shift-pill"
-                  key={
-                    shift
-                  }
+                  className="departments-v2-shift-pill"
+                  key={shift}
                 >
                   Shift{" "}
                   {shift}
@@ -634,7 +684,7 @@ function DepartmentCard({
 
       <button
         type="button"
-        className="department-view-button"
+        className="departments-v2-view-button"
         onClick={() =>
           onViewEmployees(
             department.code
@@ -642,19 +692,105 @@ function DepartmentCard({
         }
       >
         View Employees
+        <span>
+          →
+        </span>
       </button>
     </article>
   );
 }
 
-/* =========================
-   INITIALS
-   ========================= */
+function DepartmentMetric({
+  label,
+  value,
+  type,
+}: {
+  label: string;
+  value: number;
+
+  type:
+    | "enabled"
+    | "disabled"
+    | "shifts";
+}) {
+  return (
+    <div
+      className={`departments-v2-metric ${type}`}
+    >
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function DepartmentSummaryCard({
+  label,
+  value,
+  caption,
+  icon,
+  type,
+}: {
+  label: string;
+  value: number;
+  caption: string;
+  icon: string;
+
+  type:
+    | "departments"
+    | "employees"
+    | "enabled"
+    | "shifts";
+}) {
+  return (
+    <article
+      className={`departments-v2-summary-card ${type}`}
+    >
+      <div>
+        <span
+          className={`departments-v2-summary-icon ${type}`}
+        >
+          {icon}
+        </span>
+
+        <span className="departments-v2-summary-label">
+          {label}
+        </span>
+      </div>
+
+      <strong>
+        {value}
+      </strong>
+
+      <small>
+        {caption}
+      </small>
+    </article>
+  );
+}
+
+function isAttendanceEnabled(
+  value: string | null
+) {
+  const normalized =
+    value
+      ?.trim()
+      .toUpperCase();
+
+  return (
+    !normalized ||
+    normalized === "Y"
+  );
+}
 
 function getDepartmentInitials(
-  name: string
+  name?: string | null
 ) {
-  if (!name) {
+  if (!name?.trim()) {
     return "?";
   }
 
@@ -662,11 +798,10 @@ function getDepartmentInitials(
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map(
-      (word) =>
-        word
-          .charAt(0)
-          .toUpperCase()
+    .map((word) =>
+      word
+        .charAt(0)
+        .toUpperCase()
     )
     .join("");
 }
