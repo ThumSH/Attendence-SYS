@@ -182,20 +182,34 @@ builder.Services.AddScoped<
     DepartmentsService
 >();
 
+var allowedOrigins =
+    builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>();
+
+if (
+    allowedOrigins is null ||
+    allowedOrigins.Length == 0
+)
+{
+    throw new InvalidOperationException(
+        "CORS allowed origins are not configured."
+    );
+}
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("Frontend", policy =>
-    {
-        policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
+    options.AddPolicy(
+        "Frontend",
+        policy =>
+        {
+            policy
+                .WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    );
 });
-
 var app = builder.Build();
 
 await IdentitySeeder.SeedAsync(
