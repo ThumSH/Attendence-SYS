@@ -119,46 +119,52 @@ function LoginPage() {
             </span>
 
             <h1>
-              Attendance,
+              Your attendance
               <br />
-              clearly managed.
+              workspace.
             </h1>
 
             <p>
-              A secure internal workspace for
-              reviewing processed attendance,
-              employee records and operational
-              reports.
+              Manage attendance, employees, and
+              reports in one place.
             </p>
 
             <div className="login-brand-features">
               <div>
-                <span>
-                  01
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <rect x="4" y="5" width="16" height="16" rx="2" />
+                    <path d="M8 3v4m8-4v4M4 11h16m-12 5 2 2 5-5" />
+                  </svg>
                 </span>
 
                 <strong>
-                  Processed attendance records
+                  Attendance tracking
                 </strong>
               </div>
 
               <div>
-                <span>
-                  02
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <circle cx="9" cy="8" r="3" />
+                    <path d="M3 21v-3a6 6 0 0 1 12 0v3m2-16a3 3 0 0 1 0 6m1 3a5 5 0 0 1 3 4v3" />
+                  </svg>
                 </span>
 
                 <strong>
-                  Department and employee reports
+                  Employee directory
                 </strong>
               </div>
 
               <div>
-                <span>
-                  03
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 16v2m4-5v5m4-7v7" />
+                  </svg>
                 </span>
 
                 <strong>
-                  Secure internal access
+                  Reports &amp; exports
                 </strong>
               </div>
             </div>
@@ -183,16 +189,16 @@ function LoginPage() {
 
             <div className="login-heading">
               <span>
-                Welcome back
+                Attendance Tracker
               </span>
 
               <h2>
-                Sign in to continue
+                Welcome back
               </h2>
 
               <p>
-                Use your Attendance Tracker
-                account credentials.
+                Sign in with your account to access
+                your attendance workspace.
               </p>
             </div>
 
@@ -274,6 +280,10 @@ function LoginPage() {
                 )}
               </button>
             </form>
+
+            <p className="login-access-help">
+              Need access? <strong>Contact your administrator.</strong>
+            </p>
 
             <div className="login-security-note">
               <span>
