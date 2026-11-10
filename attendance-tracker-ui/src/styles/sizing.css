@@ -1,0 +1,313 @@
+/* Shared desktop proportions. Page-specific colours and visual treatments
+   remain in their existing component stylesheets. */
+@media screen {
+  .app-shell > .main-content {
+    width: calc(100% - var(--sidebar-width));
+  }
+
+  .sidebar > * {
+    flex-shrink: 0;
+  }
+
+  .sidebar-brand .company-brand__copy strong {
+    font-size: 0.875rem;
+    line-height: 1.35;
+  }
+
+  .sidebar-brand .company-brand__copy span,
+  .sidebar-section-label,
+  .sidebar-footer {
+    font-size: 0.75rem;
+  }
+
+  .sidebar-nav-item {
+    min-height: 2.875rem;
+  }
+
+  .sidebar-menu {
+    gap: 0.25rem;
+  }
+
+  .main-content :is(input, select),
+  .employee-picker-search input {
+    min-height: 2.5rem;
+    font-size: 0.875rem;
+  }
+
+  .main-content :is(h1, h2),
+  .login-heading h2 {
+    line-height: 1.25;
+  }
+
+  .attendance-v2-employee-field .employee-picker-trigger {
+    height: auto;
+    min-height: 2.5rem;
+  }
+
+  .selected-employee strong,
+  .selected-employee span,
+  .employee-option strong,
+  .employee-option span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .attendance-v2-quick-ranges,
+  .reports-v2-quick-actions,
+  .attendance-v2-selection,
+  .attendance-v2-export-actions,
+  .reports-v2-export-actions {
+    flex-wrap: wrap;
+  }
+
+  .attendance-v2-header,
+  .reports-v2-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .reports-v2-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .attendance-v2-filter-grid {
+    align-items: start;
+  }
+
+  .attendance-v2-view-button {
+    align-self: end;
+  }
+
+  .employees-v2-search > span,
+  .employees-v2-department-filter > span,
+  .departments-v2-search > span {
+    font-size: 0.75rem;
+  }
+
+  .dashboard-v2-middle-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+
+  .dashboard-v2-department-row {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-v2-department-pill,
+  .employees-v2-department-cell strong {
+    max-width: 14rem;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .reports-v2-type-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .reports-v2-type-copy strong {
+    white-space: normal;
+  }
+
+  .reports-v2-type-copy small {
+    display: block;
+    overflow: visible;
+  }
+
+  .attendance-v2-annotation-editor {
+    width: 18rem;
+    max-width: calc(100vw - 3rem);
+  }
+
+  .attendance-v2-annotation-actions {
+    flex-wrap: wrap;
+  }
+
+  .attendance-v2-annotation-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    padding: 0.625rem 0.75rem;
+    line-height: 1.5;
+  }
+
+  :is(.dashboard-v2-table, .attendance-v2-table,
+      .employees-v2-table, .reports-v2-table) th {
+    font-size: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    line-height: 1.4;
+  }
+
+  :is(.dashboard-v2-table, .attendance-v2-table,
+      .employees-v2-table, .reports-v2-table) td {
+    height: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .dashboard-v2-employee strong,
+  .employees-v2-name-cell strong,
+  .reports-v2-employee-cell strong {
+    max-width: 18rem;
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+  }
+
+  .dashboard-v2-employee span,
+  .employees-v2-name-cell span,
+  .reports-v2-employee-cell span {
+    white-space: normal;
+  }
+}
+
+@media screen and (max-width: 1450px) {
+  .main-content {
+    padding: 1.5rem;
+  }
+
+}
+
+@media screen and (max-width: 1100px) {
+  .dashboard-v2-middle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-v2-filter-grid,
+  .reports-v2-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .attendance-v2-employee-field,
+  .reports-v2-employee-field {
+    grid-column: auto;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+  }
+
+  .sidebar-menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+
+  .app-shell > .main-content {
+    width: 100%;
+    margin-left: 0;
+    padding: 1rem;
+  }
+
+  .reports-v2-export-actions {
+    display: flex !important;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .reports-v2-type-grid,
+  .attendance-v2-filter-grid,
+  .reports-v2-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-v2-employee-field,
+  .reports-v2-employee-field {
+    grid-column: auto;
+  }
+}
+
+/* Print uses physical type sizes independently of screen typography.
+   Retain each report's A4 orientation and let rows paginate naturally. */
+@media print {
+  .app-shell {
+    display: block;
+    min-height: 0;
+  }
+
+  .attendance-v2-table,
+  .reports-v2-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .attendance-v2-table th,
+  .attendance-v2-table td,
+  .reports-v2-table th,
+  .reports-v2-table td {
+    padding: 4pt 3pt;
+    font-size: 9pt;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .attendance-v2-table :is(strong, span, small),
+  .reports-v2-table :is(strong, span, small) {
+    font-size: inherit;
+    white-space: normal;
+  }
+
+  .attendance-v2-table thead,
+  .reports-v2-table thead {
+    display: table-header-group;
+  }
+
+  .reports-v2-table th:first-child {
+    width: 18%;
+  }
+
+  .reports-v2-table th:nth-child(2) {
+    width: 14%;
+  }
+
+  .attendance-v2-table th:first-child {
+    width: 14%;
+  }
+
+  .attendance-v2-table tr,
+  .reports-v2-table tr {
+    break-inside: avoid;
+  }
+
+  .reports-v2-employee-cell,
+  .reports-v2-number,
+  .reports-v2-metric,
+  .attendance-v2-metric {
+    min-width: 0;
+  }
+
+  .reports-v2-employee-cell strong {
+    max-width: none;
+    overflow: visible;
+  }
+
+  .attendance-v2-print-info > div,
+  .reports-v2-print-info > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .attendance-v2-print-title h1,
+  .reports-v2-print-title h1 {
+    font-size: 15pt;
+    line-height: 1.25;
+  }
+
+  .attendance-v2-print-info strong,
+  .reports-v2-print-info strong {
+    font-size: 10pt;
+  }
+}

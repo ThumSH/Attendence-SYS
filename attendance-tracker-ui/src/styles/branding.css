@@ -26,55 +26,55 @@
 }
 
 .company-brand--login {
-  gap: 14px;
+  gap: 0.875rem;
 }
 
 .company-brand--login .company-brand__logo {
-  width: 58px;
-  height: 58px;
-  padding: 5px;
-  border-radius: 16px;
+  width: 3.625rem;
+  height: 3.625rem;
+  padding: 0.3125rem;
+  border-radius: 1rem;
   background: #ffffff;
   box-shadow:
-    0 10px 24px
+    0 0.625rem 1.5rem
     rgba(15, 23, 42, 0.18);
 }
 
 .company-brand--login .company-brand__copy strong {
   color: #ffffff;
-  font-size: 17px;
+  font-size: 0.875rem;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .company-brand--login .company-brand__copy span {
-  margin-top: 3px;
+  margin-top: 0.1875rem;
   color: rgba(255, 255, 255, 0.68);
-  font-size: 10px;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .company-brand--print {
-  gap: 10px;
+  gap: 0.625rem;
 }
 
 .company-brand--print .company-brand__logo {
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .company-brand--print .company-brand__copy strong {
   color: #000000;
-  font-size: 12px;
+  font-size: 15pt;
   font-weight: 800;
   line-height: 1.2;
   text-transform: uppercase;
 }
 
 .company-brand--print .company-brand__copy span {
-  margin-top: 2px;
+  margin-top: 0.125rem;
   color: #444444;
-  font-size: 7px;
+  font-size: 9pt;
   font-weight: 600;
 }

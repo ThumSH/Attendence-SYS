@@ -10,23 +10,23 @@
 
 .employee-picker-trigger {
   width: 100%;
-  min-height: 42px;
+  min-height: 2.625rem;
 
-  border: 1px solid #d1d5db;
+  border: 0.0625rem solid #d1d5db;
 
-  border-radius: 9px;
+  border-radius: 0.5625rem;
 
   background: white;
 
   color: #111827;
 
-  padding: 7px 11px;
+  padding: 0.4375rem 0.6875rem;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  gap: 10px;
+  gap: 0.625rem;
 
   text-align: left;
 
@@ -45,13 +45,13 @@
   border-color: #2563eb;
 
   box-shadow:
-    0 0 0 3px rgba(37, 99, 235, 0.1);
+    0 0 0 0.1875rem rgba(37, 99, 235, 0.1);
 }
 
 .employee-picker-placeholder {
   color: #9ca3af;
 
-  font-size: 13px;
+  font-size: 0.875rem;
 }
 
 .selected-employee {
@@ -60,7 +60,7 @@
   display: flex;
   flex-direction: column;
 
-  gap: 2px;
+  gap: 0.125rem;
 }
 
 .selected-employee strong {
@@ -72,7 +72,7 @@
 
   white-space: nowrap;
 
-  font-size: 13px;
+  font-size: 0.875rem;
 
   font-weight: 700;
 
@@ -88,7 +88,7 @@
 
   white-space: nowrap;
 
-  font-size: 11px;
+  font-size: 0.875rem;
 
   color: #6b7280;
 }
@@ -98,7 +98,7 @@
 
   margin-left: auto;
 
-  font-size: 9px;
+  font-size: 0.875rem;
 
   color: #9ca3af;
 }
@@ -106,7 +106,7 @@
 .employee-picker-menu {
   position: absolute;
 
-  top: calc(100% + 7px);
+  top: calc(100% + 0.4375rem);
 
   left: 0;
   right: 0;
@@ -115,33 +115,33 @@
 
   background: white;
 
-  border: 1px solid #e5e7eb;
+  border: 0.0625rem solid #e5e7eb;
 
-  border-radius: 12px;
+  border-radius: 0.75rem;
 
   box-shadow:
-    0 18px 45px rgba(15, 23, 42, 0.16);
+    0 1.125rem 2.8125rem rgba(15, 23, 42, 0.16);
 
   overflow: hidden;
 }
 
 .employee-picker-search {
-  padding: 10px;
+  padding: 0.625rem;
 
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 0.0625rem solid #e5e7eb;
 
   background: #ffffff;
 }
 
 .employee-picker-search input {
   width: 100%;
-  height: 38px;
+  height: 2.375rem;
 
-  border: 1px solid #d1d5db;
+  border: 0.0625rem solid #d1d5db;
 
-  border-radius: 8px;
+  border-radius: 0.5rem;
 
-  padding: 0 10px;
+  padding: 0 0.625rem;
 
   outline: none;
 
@@ -154,23 +154,23 @@
   border-color: #2563eb;
 
   box-shadow:
-    0 0 0 3px rgba(37, 99, 235, 0.08);
+    0 0 0 0.1875rem rgba(37, 99, 235, 0.08);
 }
 
 .employee-picker-list {
-  max-height: 320px;
+  max-height: 20rem;
 
   overflow-y: auto;
 }
 
 .employee-picker-list::-webkit-scrollbar {
-  width: 7px;
+  width: 0.4375rem;
 }
 
 .employee-picker-list::-webkit-scrollbar-thumb {
   background: #d1d5db;
 
-  border-radius: 999px;
+  border-radius: 62.4375rem;
 }
 
 .employee-option {
@@ -178,17 +178,17 @@
 
   border: none;
 
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 0.0625rem solid #f3f4f6;
 
   background: white;
 
-  padding: 11px 13px;
+  padding: 0.6875rem 0.8125rem;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  gap: 15px;
+  gap: 0.9375rem;
 
   text-align: left;
 }
@@ -211,11 +211,11 @@
   display: flex;
   flex-direction: column;
 
-  gap: 3px;
+  gap: 0.1875rem;
 }
 
 .employee-option strong {
-  font-size: 12px;
+  font-size: 0.875rem;
 
   color: #111827;
 
@@ -227,7 +227,7 @@
 }
 
 .employee-option span {
-  font-size: 11px;
+  font-size: 0.75rem;
 
   color: #6b7280;
 
@@ -241,23 +241,23 @@
 .employee-option small {
   flex-shrink: 0;
 
-  font-size: 10px;
+  font-size: 0.75rem;
 
   color: #2563eb;
 
   background: #eff6ff;
 
-  border-radius: 999px;
+  border-radius: 62.4375rem;
 
-  padding: 4px 7px;
+  padding: 0.25rem 0.4375rem;
 }
 
 .employee-picker-empty {
-  padding: 24px 15px;
+  padding: 1.5rem 0.9375rem;
 
   text-align: center;
 
   color: #9ca3af;
 
-  font-size: 12px;
+  font-size: 0.875rem;
 }
